@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Office docs (binary, not source)
+*.docx
+*.xlsx

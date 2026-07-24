@@ -1,0 +1,23 @@
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { Colors } from '../constants/colors';
+
+export default function RootLayout() {
+  return (
+    <>
+      <StatusBar style="light" backgroundColor={Colors.primary} />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="search" />
+        <Stack.Screen name="browse/index" />
+        <Stack.Screen name="browse/[category]" />
+        <Stack.Screen name="listing/[id]" />
+        <Stack.Screen name="register/index" />
+        <Stack.Screen name="admin/login" />
+        <Stack.Screen name="admin/dashboard" />
+        <Stack.Screen name="admin/approve/[id]" />
+        <Stack.Screen name="disclaimer" />
+      </Stack>
+    </>
+  );
+}
