@@ -51,22 +51,26 @@ export default function ListingDetailScreen() {
     Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`);
   }
 
-  function submitComplaint() {
+  async function submitComplaint() {
     if (!complainName || !complainPhone || !complainDesc) {
       Alert.alert('Missing info', 'Please fill all fields');
       return;
     }
-    addComplaint({
-      clientId: client.id,
-      reporterName: complainName,
-      reporterPhone: complainPhone,
-      description: complainDesc,
-    });
-    Alert.alert('Submitted', 'Your complaint has been recorded and will be reviewed.');
-    setShowComplaint(false);
-    setComplainName('');
-    setComplainPhone('');
-    setComplainDesc('');
+    try {
+      await addComplaint({
+        clientId: client.id,
+        reporterName: complainName,
+        reporterPhone: complainPhone,
+        description: complainDesc,
+      });
+      Alert.alert('Submitted', 'Your complaint has been recorded and will be reviewed.');
+      setShowComplaint(false);
+      setComplainName('');
+      setComplainPhone('');
+      setComplainDesc('');
+    } catch {
+      Alert.alert('Error', 'Could not submit complaint. Please try again.');
+    }
   }
 
   return (

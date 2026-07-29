@@ -1,303 +1,192 @@
 import { create } from 'zustand';
 import { Client, Admin, Complaint, SearchFilters } from '../types';
 import { generateClientCode } from '../constants/locations';
+import { supabase, dbToClient, clientToDb, dbToAdmin, dbToComplaint } from '../lib/supabase';
 
 interface AppState {
-  // Auth
   currentAdmin: Admin | null;
-  login: (code: string, password: string) => boolean;
-  logout: () => void;
+  login: (code: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
+  restoreSession: () => Promise<void>;
 
-  // Clients
   clients: Client[];
-  addClient: (data: Omit<Client, 'id' | 'clientCode' | 'status' | 'registeredAt'>) => Client;
-  approveClient: (id: string, adminCode: string) => void;
-  rejectClient: (id: string, adminCode: string, reason: string) => void;
-  suspendClient: (id: string, adminCode: string, reason: string) => void;
-  unsuspendClient: (id: string, adminCode: string) => void;
-  markIndebted: (id: string, indebted: boolean) => void;
+  isLoading: boolean;
+  loadClients: () => Promise<void>;
+  addClient: (data: Omit<Client, 'id' | 'clientCode' | 'status' | 'registeredAt'>) => Promise<Client>;
+  approveClient: (id: string, adminCode: string) => Promise<void>;
+  rejectClient: (id: string, adminCode: string, reason: string) => Promise<void>;
+  suspendClient: (id: string, adminCode: string, reason: string) => Promise<void>;
+  unsuspendClient: (id: string, adminCode: string) => Promise<void>;
+  markIndebted: (id: string, indebted: boolean) => Promise<void>;
   getClientById: (id: string) => Client | undefined;
   getApprovedClients: () => Client[];
   getPendingClients: () => Client[];
 
-  // Search
   searchFilters: SearchFilters;
   setSearchFilters: (filters: Partial<SearchFilters>) => void;
   searchResults: Client[];
   runSearch: () => void;
 
-  // Complaints
   complaints: Complaint[];
-  addComplaint: (data: Omit<Complaint, 'id' | 'status' | 'createdAt'>) => void;
+  loadComplaints: () => Promise<void>;
+  addComplaint: (data: Omit<Complaint, 'id' | 'status' | 'createdAt'>) => Promise<void>;
 
-  // Traffic
   trafficCount: number;
   incrementTraffic: () => void;
 }
 
-const MOCK_ADMINS: Admin[] = [
-  {
-    id: 'admin-001',
-    adminCode: 'ADM-PH-001',
-    name: 'Emmanuel Dike',
-    email: 'e.dike@cityhup.com',
-    city: 'Port Harcourt',
-    state: 'Rivers',
-    isActive: true,
-    approvalCount: 12,
-  },
-  {
-    id: 'admin-002',
-    adminCode: 'ADM-LG-001',
-    name: 'Chioma Obi',
-    email: 'c.obi@cityhup.com',
-    city: 'Lagos Island',
-    state: 'Lagos',
-    isActive: true,
-    approvalCount: 34,
-  },
-];
-
-const MOCK_CLIENTS: Client[] = [
-  {
-    id: 'client-001',
-    clientCode: 'CH-RVS-100001',
-    type: 'corporate',
-    status: 'approved',
-    natureOfBiz: 'Building & Construction',
-    country: 'Nigeria',
-    state: 'Rivers',
-    lga: 'Port Harcourt',
-    city: 'Port Harcourt',
-    area: 'GRA Phase 2',
-    town: 'Port Harcourt',
-    businessName: 'Solvay Construction Ltd',
-    address: '12 Tombia Street, GRA Phase 2, Port Harcourt',
-    email: 'info@solvayconstruction.ng',
-    phone: '08012345678',
-    nearestBusStop: 'Rumuola Junction',
-    nearestLandmark: 'Shell Camp',
-    competence: 'Civil Engineering, Building, Renovation',
-    cacNumber: 'RC-1234567',
-    profile: 'We are a leading construction company based in Port Harcourt with over 15 years of experience in residential and commercial construction.',
-    info: 'Specialized in high-rise buildings, estate development, and renovation works.',
-    infoImages: [],
-    websiteLink: 'https://solvayconstruction.ng',
-    shelfItems: [],
-    referral: 'City Hup Marketing Team',
-    director: 'Engr. Solomon Diko',
-    pictures: [],
-    paymentBand: 10000,
-    duration: 12,
-    paymentMethod: 'paystack',
-    acceptedTerms: true,
-    approvedBy: 'ADM-PH-001',
-    approvedAt: '2026-01-15T10:00:00Z',
-    registeredBy: 'AGT-PH-005',
-    registeredAt: '2026-01-10T09:00:00Z',
-    categories: ['house-building', 'building-material'],
-    rating: 4.5,
-    reviewCount: 23,
-  },
-  {
-    id: 'client-002',
-    clientCode: 'CH-RVS-100002',
-    type: 'individual',
-    status: 'approved',
-    natureOfBiz: 'Automobile',
-    country: 'Nigeria',
-    state: 'Rivers',
-    lga: 'Obio-Akpor',
-    city: 'Rumuola',
-    area: 'Rumuola',
-    town: 'Rumuola',
-    businessName: 'Chuka Auto Works',
-    address: '5 Chinda Street, Rumuola, Port Harcourt',
-    email: 'chukauto@gmail.com',
-    phone: '08098765432',
-    nearestBusStop: 'Rumuola Bus Stop',
-    nearestLandmark: 'Total Filling Station',
-    competence: 'Japanese Cars – Toyota, Honda, Lexus',
-    cacNumber: '',
-    profile: 'Expert mechanic with 10 years experience in Japanese vehicle repairs.',
-    info: 'Specializes in Toyota Camry, Corolla, Avalon, Lexus ES and RX models.',
-    infoImages: [],
-    shelfItems: [],
-    director: 'Chukwuemeka Okafor',
-    pictures: [],
-    paymentBand: 2000,
-    duration: 6,
-    paymentMethod: 'interswitch',
-    acceptedTerms: true,
-    approvedBy: 'ADM-PH-001',
-    approvedAt: '2026-02-01T11:00:00Z',
-    registeredBy: 'AGT-PH-005',
-    registeredAt: '2026-01-28T10:00:00Z',
-    categories: ['automobile', 'automobile-spare-parts'],
-    rating: 4.8,
-    reviewCount: 47,
-  },
-  {
-    id: 'client-003',
-    clientCode: 'CH-RVS-100003',
-    type: 'corporate',
-    status: 'pending',
-    natureOfBiz: 'Catering & Food',
-    country: 'Nigeria',
-    state: 'Rivers',
-    lga: 'Port Harcourt',
-    city: 'Port Harcourt',
-    area: 'D-Line',
-    town: 'Port Harcourt',
-    businessName: 'Mama Titi Catering Services',
-    address: '8 Aggrey Road, D-Line, Port Harcourt',
-    email: 'mamatiti@catering.ng',
-    phone: '08133334444',
-    nearestBusStop: 'D-Line Junction',
-    nearestLandmark: 'Access Bank D-Line',
-    competence: 'Outdoor Catering, Event Catering, Native Food',
-    cacNumber: 'RC-9876543',
-    profile: 'Professional catering outfit for events and corporate functions.',
-    info: 'Specializes in native soups, rice dishes, and full event catering for up to 1000 guests.',
-    infoImages: [],
-    shelfItems: [],
-    director: 'Titilayo Adebisi',
-    pictures: [],
-    paymentBand: 5000,
-    duration: 6,
-    paymentMethod: 'paystack',
-    acceptedTerms: true,
-    registeredBy: 'AGT-PH-007',
-    registeredAt: '2026-07-20T09:30:00Z',
-    categories: ['catering'],
-    rating: undefined,
-    reviewCount: 0,
-  },
-  {
-    id: 'client-004',
-    clientCode: 'CH-LGS-200001',
-    type: 'corporate',
-    status: 'approved',
-    natureOfBiz: 'Retail (Supermarket/Store)',
-    country: 'Nigeria',
-    state: 'Lagos',
-    lga: 'Ikeja',
-    city: 'Ikeja',
-    area: 'Allen Avenue',
-    town: 'Ikeja',
-    businessName: 'QuickMart Superstore',
-    address: '45 Allen Avenue, Ikeja, Lagos',
-    email: 'info@quickmart.ng',
-    phone: '07011112222',
-    nearestBusStop: 'Allen Bus Stop',
-    nearestLandmark: 'GTBank Allen Branch',
-    competence: 'Supermarket, Groceries, Electronics',
-    cacNumber: 'RC-5556789',
-    profile: 'Full-service supermarket with fresh produce, household items, and electronics.',
-    info: 'New stock of electronics and household appliances available.',
-    infoImages: [],
-    websiteLink: 'https://quickmart.ng',
-    shelfItems: [
-      { id: 's001', name: 'Indomie Carton', price: 4500, description: '40-pack indomie carton', isOffer: true },
-      { id: 's002', name: 'Semovita 1.5kg', price: 750, description: 'Golden Penny Semovita', isOffer: false },
-      { id: 's003', name: 'Rice 25kg', price: 35000, description: 'Abakaliki long grain rice', isOffer: true },
-    ],
-    director: 'Mr. Adewale Johnson',
-    pictures: [],
-    paymentBand: 10000,
-    duration: 12,
-    paymentMethod: 'paystack',
-    acceptedTerms: true,
-    approvedBy: 'ADM-LG-001',
-    approvedAt: '2026-03-10T10:00:00Z',
-    registeredBy: 'AGT-LG-002',
-    registeredAt: '2026-03-05T08:00:00Z',
-    categories: ['super-store'],
-    rating: 4.2,
-    reviewCount: 89,
-  },
-];
-
 export const useAppStore = create<AppState>((set, get) => ({
   currentAdmin: null,
 
-  login: (code: string, _password: string) => {
-    const admin = MOCK_ADMINS.find(a => a.adminCode === code && a.isActive);
-    if (admin) {
-      set({ currentAdmin: admin });
-      return true;
-    }
-    return false;
+  login: async (code, password) => {
+    const { data: adminRow } = await supabase
+      .from('admins')
+      .select('email')
+      .eq('admin_code', code)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (!adminRow) return false;
+
+    const { data: authData, error } = await supabase.auth.signInWithPassword({
+      email: adminRow.email,
+      password,
+    });
+
+    if (error || !authData.user) return false;
+
+    const { data: admin } = await supabase
+      .from('admins')
+      .select('*')
+      .eq('id', authData.user.id)
+      .single();
+
+    if (!admin) return false;
+
+    set({ currentAdmin: dbToAdmin(admin) });
+    await get().loadClients();
+    await get().loadComplaints();
+    return true;
   },
 
-  logout: () => set({ currentAdmin: null }),
+  logout: async () => {
+    await supabase.auth.signOut();
+    set({ currentAdmin: null, complaints: [] });
+    await get().loadClients();
+  },
 
-  clients: MOCK_CLIENTS,
+  restoreSession: async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      await get().loadClients();
+      return;
+    }
+    const { data: admin } = await supabase
+      .from('admins')
+      .select('*')
+      .eq('id', session.user.id)
+      .maybeSingle();
 
-  addClient: (data) => {
-    const newClient: Client = {
+    if (admin) {
+      set({ currentAdmin: dbToAdmin(admin) });
+      await get().loadComplaints();
+    }
+    await get().loadClients();
+  },
+
+  clients: [],
+  isLoading: false,
+
+  loadClients: async () => {
+    set({ isLoading: true });
+    const { data } = await supabase
+      .from('clients')
+      .select('*')
+      .order('registered_at', { ascending: false });
+    set({ clients: (data ?? []).map(dbToClient), isLoading: false });
+  },
+
+  addClient: async (data) => {
+    const clientCode = generateClientCode(data.state);
+    const row = clientToDb({
       ...data,
-      id: `client-${Date.now()}`,
-      clientCode: generateClientCode(data.state),
+      clientCode,
       status: 'pending',
       registeredAt: new Date().toISOString(),
-    };
-    set(state => ({ clients: [...state.clients, newClient] }));
-    return newClient;
+    });
+
+    const { data: inserted, error } = await supabase
+      .from('clients')
+      .insert(row)
+      .select()
+      .single();
+
+    if (error || !inserted) throw new Error(error?.message ?? 'Registration failed');
+
+    const client = dbToClient(inserted);
+    set(state => ({ clients: [client, ...state.clients] }));
+    return client;
   },
 
-  approveClient: (id, adminCode) => {
+  approveClient: async (id, adminCode) => {
+    const now = new Date().toISOString();
+    await supabase
+      .from('clients')
+      .update({ status: 'approved', approved_by: adminCode, approved_at: now })
+      .eq('id', id);
     set(state => ({
       clients: state.clients.map(c =>
-        c.id === id
-          ? { ...c, status: 'approved', approvedBy: adminCode, approvedAt: new Date().toISOString() }
-          : c
+        c.id === id ? { ...c, status: 'approved', approvedBy: adminCode, approvedAt: now } : c
       ),
     }));
   },
 
-  rejectClient: (id, adminCode, reason) => {
+  rejectClient: async (id, adminCode, reason) => {
+    const now = new Date().toISOString();
+    await supabase
+      .from('clients')
+      .update({ status: 'rejected', approved_by: adminCode, rejected_reason: reason, approved_at: now })
+      .eq('id', id);
     set(state => ({
       clients: state.clients.map(c =>
-        c.id === id
-          ? { ...c, status: 'rejected', approvedBy: adminCode, rejectedReason: reason, approvedAt: new Date().toISOString() }
-          : c
+        c.id === id ? { ...c, status: 'rejected', approvedBy: adminCode, rejectedReason: reason, approvedAt: now } : c
       ),
     }));
   },
 
-  suspendClient: (id, adminCode, reason) => {
+  suspendClient: async (id, adminCode, reason) => {
+    await supabase
+      .from('clients')
+      .update({ status: 'suspended', approved_by: adminCode, suspended_reason: reason })
+      .eq('id', id);
     set(state => ({
       clients: state.clients.map(c =>
-        c.id === id
-          ? { ...c, status: 'suspended', approvedBy: adminCode, suspendedReason: reason }
-          : c
+        c.id === id ? { ...c, status: 'suspended', approvedBy: adminCode, suspendedReason: reason } : c
       ),
     }));
   },
 
-  unsuspendClient: (id, adminCode) => {
+  unsuspendClient: async (id, adminCode) => {
+    await supabase
+      .from('clients')
+      .update({ status: 'approved', suspended_reason: null, approved_by: adminCode })
+      .eq('id', id);
     set(state => ({
       clients: state.clients.map(c =>
-        c.id === id
-          ? { ...c, status: 'approved', suspendedReason: undefined, approvedBy: adminCode }
-          : c
+        c.id === id ? { ...c, status: 'approved', suspendedReason: undefined, approvedBy: adminCode } : c
       ),
     }));
   },
 
-  markIndebted: (id, indebted) => {
+  markIndebted: async (id, indebted) => {
+    await supabase.from('clients').update({ is_indebted: indebted }).eq('id', id);
     set(state => ({
-      clients: state.clients.map(c =>
-        c.id === id ? { ...c, isIndebted: indebted } : c
-      ),
+      clients: state.clients.map(c => c.id === id ? { ...c, isIndebted: indebted } : c),
     }));
   },
 
   getClientById: (id) => get().clients.find(c => c.id === id),
-
   getApprovedClients: () => get().clients.filter(c => c.status === 'approved'),
-
   getPendingClients: () => get().clients.filter(c => c.status === 'pending'),
 
   searchFilters: { query: '' },
@@ -310,7 +199,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     const approved = clients.filter(c => c.status === 'approved' && !c.isIndebted);
     const { query, state, lga, city, category } = searchFilters;
     const q = query.toLowerCase();
-
     const results = approved.filter(c => {
       const matchQuery =
         !q ||
@@ -325,19 +213,37 @@ export const useAppStore = create<AppState>((set, get) => ({
       const matchCategory = !category || c.categories.includes(category);
       return matchQuery && matchState && matchLga && matchCity && matchCategory;
     });
-
     set({ searchResults: results });
   },
 
   complaints: [],
-  addComplaint: (data) => {
-    const complaint: Complaint = {
-      ...data,
-      id: `complaint-${Date.now()}`,
-      status: 'open',
-      createdAt: new Date().toISOString(),
-    };
-    set(state => ({ complaints: [...state.complaints, complaint] }));
+
+  loadComplaints: async () => {
+    const { data } = await supabase
+      .from('complaints')
+      .select('*')
+      .order('created_at', { ascending: false });
+    set({ complaints: (data ?? []).map(dbToComplaint) });
+  },
+
+  addComplaint: async (data) => {
+    const { data: inserted, error } = await supabase
+      .from('complaints')
+      .insert({
+        client_id: data.clientId,
+        reporter_name: data.reporterName,
+        reporter_phone: data.reporterPhone,
+        description: data.description,
+        recommendation: data.recommendation ?? null,
+        status: 'open',
+      })
+      .select()
+      .single();
+
+    if (error || !inserted) throw new Error(error?.message ?? 'Failed to submit complaint');
+
+    const complaint = dbToComplaint(inserted);
+    set(state => ({ complaints: [complaint, ...state.complaints] }));
   },
 
   trafficCount: 14872,

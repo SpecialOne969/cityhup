@@ -1,8 +1,16 @@
+import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Colors } from '../constants/colors';
+import { useAppStore } from '../store/useAppStore';
 
 export default function RootLayout() {
+  const restoreSession = useAppStore(s => s.restoreSession);
+
+  useEffect(() => {
+    restoreSession();
+  }, []);
+
   return (
     <>
       <StatusBar style="light" backgroundColor={Colors.primary} />

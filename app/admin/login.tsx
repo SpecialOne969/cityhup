@@ -23,21 +23,24 @@ export default function AdminLoginScreen() {
     }
   }, [currentAdmin]);
 
-  function handleLogin() {
+  async function handleLogin() {
     if (!adminCode || !password) {
       Alert.alert('Required', 'Please enter your admin code and password');
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      const ok = login(adminCode.trim().toUpperCase(), password);
+    try {
+      const ok = await login(adminCode.trim().toUpperCase(), password);
       if (ok) {
         router.replace('/admin/dashboard');
       } else {
-        Alert.alert('Login Failed', 'Invalid admin code or account inactive. Contact City Hup HQ.');
+        Alert.alert('Login Failed', 'Invalid admin code or password. Contact City Hup HQ.');
       }
-    }, 800);
+    } catch {
+      Alert.alert('Error', 'Could not connect. Check your internet connection.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

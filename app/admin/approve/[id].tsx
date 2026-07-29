@@ -55,8 +55,8 @@ export default function ApproveClientScreen() {
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Approve', onPress: () => {
-            approveClient(client!.id, currentAdmin!.adminCode);
+          text: 'Approve', onPress: async () => {
+            await approveClient(client!.id, currentAdmin!.adminCode);
             Alert.alert('Approved', `${client!.businessName} is now live on CityHup.`, [
               { text: 'OK', onPress: () => router.back() }
             ]);
@@ -85,8 +85,8 @@ export default function ApproveClientScreen() {
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Reject', style: 'destructive', onPress: () => {
-            rejectClient(client!.id, currentAdmin!.adminCode, rejectReason);
+          text: 'Reject', style: 'destructive', onPress: async () => {
+            await rejectClient(client!.id, currentAdmin!.adminCode, rejectReason);
             Alert.alert('Rejected', 'Registration has been rejected.', [
               { text: 'OK', onPress: () => router.back() }
             ]);
@@ -265,11 +265,11 @@ export default function ApproveClientScreen() {
             {/* Mark indebted toggle */}
             <TouchableOpacity
               style={[styles.indebtedBtn, client.isIndebted && styles.indebtedBtnActive]}
-              onPress={() => {
+              onPress={async () => {
                 if (!confirmCode.trim() || confirmCode.trim().toUpperCase() !== currentAdmin?.adminCode) {
                   Alert.alert('Invalid Code', 'Enter your admin code first'); return;
                 }
-                markIndebted(client.id, !client.isIndebted);
+                await markIndebted(client.id, !client.isIndebted);
                 Alert.alert(client.isIndebted ? 'Cleared' : 'Flagged', client.isIndebted ? 'Indebted flag removed. Profile is visible again.' : 'Client flagged as indebted. Profile hidden from public.');
               }}
             >
@@ -303,8 +303,8 @@ export default function ApproveClientScreen() {
                 if (!suspendReason.trim()) { Alert.alert('Required', 'Enter a suspension reason'); return; }
                 Alert.alert('Confirm Suspension', `Suspend "${client.businessName}"? They will be hidden from the public.`, [
                   { text: 'Cancel', style: 'cancel' },
-                  { text: 'Suspend', style: 'destructive', onPress: () => {
-                    suspendClient(client.id, currentAdmin!.adminCode, suspendReason);
+                  { text: 'Suspend', style: 'destructive', onPress: async () => {
+                    await suspendClient(client.id, currentAdmin!.adminCode, suspendReason);
                     Alert.alert('Suspended', 'Client has been suspended.', [{ text: 'OK', onPress: () => router.back() }]);
                   }},
                 ]);
@@ -332,11 +332,11 @@ export default function ApproveClientScreen() {
             />
             <TouchableOpacity
               style={styles.approveBtn}
-              onPress={() => {
+              onPress={async () => {
                 if (!confirmCode.trim() || confirmCode.trim().toUpperCase() !== currentAdmin?.adminCode) {
                   Alert.alert('Invalid Code', 'Admin code mismatch'); return;
                 }
-                unsuspendClient(client.id, currentAdmin!.adminCode);
+                await unsuspendClient(client.id, currentAdmin!.adminCode);
                 Alert.alert('Unsuspended', 'Client is now active again.', [{ text: 'OK', onPress: () => router.back() }]);
               }}
             >

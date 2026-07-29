@@ -165,46 +165,55 @@ export default function RegisterScreen() {
     setStep(s => s + 1);
   }
 
-  function handleSubmit() {
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit() {
     if (!validateStep()) return;
-    addClient({
-      type: clientType,
-      natureOfBiz,
-      country,
-      state,
-      lga,
-      city,
-      area,
-      town,
-      businessName,
-      address,
-      email,
-      phone,
-      nearestBusStop: busStop,
-      nearestLandmark: landmark,
-      competence,
-      cacNumber,
-      profile,
-      info,
-      infoImages: [],
-      websiteLink,
-      shelfItems: [],
-      referral,
-      director,
-      identification: meansOfId ? { type: meansOfId as MeansOfId, number: meansOfIdNum } : undefined,
-      pictures: [],
-      paymentBand,
-      duration,
-      paymentMethod,
-      acceptedTerms,
-      registeredBy: agentCode,
-      categories: selectedCats,
-    });
-    Alert.alert(
-      'Registration Submitted',
-      'The client registration has been submitted for admin approval. The client will become visible once approved.',
-      [{ text: 'OK', onPress: () => router.push('/') }]
-    );
+    setSubmitting(true);
+    try {
+      await addClient({
+        type: clientType,
+        natureOfBiz,
+        country,
+        state,
+        lga,
+        city,
+        area,
+        town,
+        businessName,
+        address,
+        email,
+        phone,
+        nearestBusStop: busStop,
+        nearestLandmark: landmark,
+        competence,
+        cacNumber,
+        profile,
+        info,
+        infoImages: [],
+        websiteLink,
+        shelfItems: [],
+        referral,
+        director,
+        identification: meansOfId ? { type: meansOfId as MeansOfId, number: meansOfIdNum } : undefined,
+        pictures: [],
+        paymentBand,
+        duration,
+        paymentMethod,
+        acceptedTerms,
+        registeredBy: agentCode,
+        categories: selectedCats,
+      });
+      Alert.alert(
+        'Registration Submitted',
+        'The client registration has been submitted for admin approval. The client will become visible once approved.',
+        [{ text: 'OK', onPress: () => router.push('/') }]
+      );
+    } catch {
+      Alert.alert('Error', 'Could not submit registration. Check your internet connection and try again.');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const lgaOptions = getLgasByState(state).map(l => ({ label: l, value: l }));
@@ -488,9 +497,9 @@ export default function RegisterScreen() {
               <Ionicons name="arrow-forward" size={16} color={Colors.white} />
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
+            <TouchableOpacity style={[styles.submitBtn, submitting && { opacity: 0.6 }]} onPress={handleSubmit} disabled={submitting}>
               <Ionicons name="checkmark-circle" size={18} color={Colors.white} />
-              <Text style={styles.submitBtnText}>Submit Registration</Text>
+              <Text style={styles.submitBtnText}>{submitting ? 'Submitting…' : 'Submit Registration'}</Text>
             </TouchableOpacity>
           )}
         </View>
