@@ -119,6 +119,30 @@ CREATE POLICY "admin_read_complaints" ON complaints
 CREATE POLICY "admin_update_complaint" ON complaints
   FOR UPDATE TO authenticated USING (true);
 
+-- CUSTOMERS TABLE (ordinary users who browse and hire)
+CREATE TABLE IF NOT EXISTS customers (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  full_name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  phone TEXT,
+  state TEXT,
+  lga TEXT,
+  interested_categories JSONB DEFAULT '[]',
+  registered_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+
+-- Customers can read/update their own record
+CREATE POLICY "customer_read_own" ON customers
+  FOR SELECT TO authenticated USING (auth.uid() = id);
+
+CREATE POLICY "customer_update_own" ON customers
+  FOR UPDATE TO authenticated USING (auth.uid() = id);
+
+CREATE POLICY "customer_insert_own" ON customers
+  FOR INSERT WITH CHECK (auth.uid() = id);
+
 -- ============================================================
 -- SEED DATA (optional — 4 demo clients)
 -- ============================================================

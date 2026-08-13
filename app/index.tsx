@@ -13,6 +13,7 @@ import AdBanner from '../components/AdBanner';
 import ListingCard from '../components/ListingCard';
 import CategoryCard from '../components/CategoryCard';
 import ChatBox from '../components/ChatBox';
+import ThemeSwitcher from '../components/ThemeSwitcher';
 
 const { width } = Dimensions.get('window');
 
@@ -230,6 +231,7 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
       <ChatBox />
+      <ThemeSwitcher />
     </View>
   );
 }

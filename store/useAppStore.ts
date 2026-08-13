@@ -1,13 +1,20 @@
 import { create } from 'zustand';
-import { Client, Admin, Complaint, SearchFilters } from '../types';
+import { Client, Admin, Customer, Complaint, SearchFilters } from '../types';
 import { generateClientCode } from '../constants/locations';
-import { supabase, dbToClient, clientToDb, dbToAdmin, dbToComplaint } from '../lib/supabase';
+import { supabase, dbToClient, clientToDb, dbToAdmin, dbToCustomer, dbToComplaint } from '../lib/supabase';
 
 interface AppState {
+  // Admin auth
   currentAdmin: Admin | null;
   login: (code: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   restoreSession: () => Promise<void>;
+
+  // Customer auth
+  currentCustomer: Customer | null;
+  customerLogin: (email: string, password: string) => Promise<boolean>;
+  customerLogout: () => Promise<void>;
+  registerCustomer: (data: { fullName: string; email: string; phone?: string; state?: string; lga?: string; interestedCategories: string[]; password: string }) => Promise<boolean>;
 
   clients: Client[];
   isLoading: boolean;
@@ -81,17 +88,58 @@ export const useAppStore = create<AppState>((set, get) => ({
       await get().loadClients();
       return;
     }
-    const { data: admin } = await supabase
+    const { data: adminRow } = await supabase
       .from('admins')
       .select('*')
       .eq('id', session.user.id)
       .maybeSingle();
 
-    if (admin) {
-      set({ currentAdmin: dbToAdmin(admin) });
+    if (adminRow) {
+      set({ currentAdmin: dbToAdmin(adminRow) });
       await get().loadComplaints();
+    } else {
+      const { data: customerRow } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      if (customerRow) set({ currentCustomer: dbToCustomer(customerRow) });
     }
     await get().loadClients();
+  },
+
+  currentCustomer: null,
+
+  customerLogin: async (email, password) => {
+    const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error || !authData.user) return false;
+    const { data: row } = await supabase.from('customers').select('*').eq('id', authData.user.id).single();
+    if (!row) { await supabase.auth.signOut(); return false; }
+    set({ currentCustomer: dbToCustomer(row) });
+    return true;
+  },
+
+  customerLogout: async () => {
+    await supabase.auth.signOut();
+    set({ currentCustomer: null });
+  },
+
+  registerCustomer: async ({ fullName, email, phone, state, lga, interestedCategories, password }) => {
+    const { data: authData, error } = await supabase.auth.signUp({ email, password });
+    if (error || !authData.user) return false;
+    const { error: insertError } = await supabase.from('customers').insert({
+      id: authData.user.id,
+      full_name: fullName,
+      email,
+      phone: phone ?? null,
+      state: state ?? null,
+      lga: lga ?? null,
+      interested_categories: interestedCategories,
+    });
+    if (insertError) return false;
+    const { data: row } = await supabase.from('customers').select('*').eq('id', authData.user.id).single();
+    if (row) set({ currentCustomer: dbToCustomer(row) });
+    return true;
   },
 
   clients: [],

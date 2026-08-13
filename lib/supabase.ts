@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Client, Admin, Complaint } from '../types';
+import { Client, Admin, Customer, Complaint } from '../types';
 
 export const supabase = createClient(
   'https://udwfsahkujngleoncfey.supabase.co',
@@ -111,6 +111,19 @@ export function dbToAdmin(row: any): Admin {
     state: row.state ?? '',
     isActive: row.is_active ?? true,
     approvalCount: row.approval_count ?? 0,
+  };
+}
+
+export function dbToCustomer(row: any): Customer {
+  return {
+    id: row.id,
+    fullName: row.full_name,
+    email: row.email,
+    phone: row.phone ?? undefined,
+    state: row.state ?? undefined,
+    lga: row.lga ?? undefined,
+    interestedCategories: row.interested_categories ?? [],
+    registeredAt: row.registered_at,
   };
 }
 

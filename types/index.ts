@@ -122,3 +122,14 @@ export interface SearchFilters {
   category?: string;
   type?: ClientType;
 }
+
+export interface Customer {
+  id: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  state?: string;
+  lga?: string;
+  interestedCategories: string[];
+  registeredAt: string;
+}

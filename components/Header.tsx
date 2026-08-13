@@ -6,11 +6,12 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
+import { useAppStore } from '../store/useAppStore';
 
 export default function Header() {
   const router = useRouter();
+  const currentCustomer = useAppStore(s => s.currentCustomer);
   const [query, setQuery] = useState('');
-  const [menuOpen, setMenuOpen] = useState(false);
 
   const handleSearch = () => {
     if (query.trim()) {
@@ -46,13 +47,22 @@ export default function Header() {
         </View>
 
         <View style={styles.topActions}>
-          <TouchableOpacity style={styles.adminBtn} onPress={() => router.push('/admin/login')}>
-            <Ionicons name="shield-checkmark-outline" size={16} color={Colors.white} />
-            <Text style={styles.adminBtnText}>Admin</Text>
-          </TouchableOpacity>
+          {currentCustomer ? (
+            <TouchableOpacity style={styles.myAccountBtn} onPress={() => router.push('/customer-dashboard')}>
+              <Ionicons name="person-circle-outline" size={16} color={Colors.primary} />
+              <Text style={styles.myAccountText} numberOfLines={1}>
+                {currentCustomer.fullName.split(' ')[0]}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.signInBtn} onPress={() => router.push('/customer-login')}>
+              <Ionicons name="person-outline" size={16} color={Colors.white} />
+              <Text style={styles.signInText}>Sign In</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.registerBtn} onPress={() => router.push('/register')}>
-            <Ionicons name="person-add-outline" size={16} color={Colors.accent} />
-            <Text style={styles.registerBtnText}>Register</Text>
+            <Ionicons name="business-outline" size={16} color={Colors.accent} />
+            <Text style={styles.registerBtnText}>List Business</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -136,26 +146,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  topActions: { flexDirection: 'row', gap: 8 },
-  adminBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.4)',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  topActions: { flexDirection: 'row', gap: 6 },
+  signInBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)',
+    borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6,
   },
-  adminBtnText: { color: Colors.white, fontSize: 12, fontWeight: '600' },
+  signInText: { color: Colors.white, fontSize: 12, fontWeight: '600' },
+  myAccountBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: Colors.white, borderRadius: 6,
+    paddingHorizontal: 10, paddingVertical: 6, maxWidth: 100,
+  },
+  myAccountText: { color: Colors.primary, fontSize: 12, fontWeight: '700' },
   registerBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.white,
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: Colors.white, borderRadius: 6,
+    paddingHorizontal: 10, paddingVertical: 6,
   },
   registerBtnText: { color: Colors.accent, fontSize: 12, fontWeight: '700' },
   navBar: { backgroundColor: Colors.primaryDark },
