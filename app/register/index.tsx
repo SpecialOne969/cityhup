@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
   Alert, Platform,
@@ -11,6 +11,8 @@ import { PAYMENT_BANDS, DURATIONS, PAYMENT_METHODS, MEANS_OF_ID, NATURE_OF_BIZ_O
 import { CATEGORIES } from '../../constants/categories';
 import { useAppStore } from '../../store/useAppStore';
 import { ClientType, PaymentMethod, MeansOfId } from '../../types';
+import ImageUploader from '../../components/ImageUploader';
+import { uploadImages, uploadImage } from '../../lib/uploadImage';
 
 const STEPS = ['Client Type', 'Location', 'Business Info', 'Extra Details', 'Payment & Submit'];
 
@@ -80,6 +82,12 @@ export default function RegisterScreen() {
   const addClient = useAppStore(s => s.addClient);
 
   const [step, setStep] = useState(0);
+  const uploadFolder = useRef(`reg-${Date.now()}-${Math.random().toString(36).slice(2)}`).current;
+
+  // Image states — local URIs until submit
+  const [businessPictures, setBusinessPictures] = useState<string[]>([]);
+  const [idDocImage, setIdDocImage] = useState<string[]>([]);
+  const [paymentProof, setPaymentProof] = useState<string[]>([]);
 
   // Field 1
   const [clientType, setClientType] = useState<ClientType>('individual');
@@ -175,10 +183,32 @@ export default function RegisterScreen() {
 
   const [submitting, setSubmitting] = useState(false);
 
+  const [submitStatus, setSubmitStatus] = useState('');
+
   async function handleSubmit() {
     if (!validateStep()) return;
     setSubmitting(true);
     try {
+      setSubmitStatus('Uploading photos…');
+      const uploadedPictures = await uploadImages(businessPictures, 'client-pictures', uploadFolder);
+
+      let uploadedIdImage: string | undefined;
+      if (idDocImage.length > 0 && !idDocImage[0].startsWith('http')) {
+        const ext = (idDocImage[0].split('.').pop() ?? 'jpg').split('?')[0];
+        uploadedIdImage = await uploadImage(idDocImage[0], 'client-docs', `${uploadFolder}/id.${ext}`);
+      } else if (idDocImage.length > 0) {
+        uploadedIdImage = idDocImage[0];
+      }
+
+      let uploadedPaymentProof: string | undefined;
+      if (paymentProof.length > 0 && !paymentProof[0].startsWith('http')) {
+        const ext = (paymentProof[0].split('.').pop() ?? 'jpg').split('?')[0];
+        uploadedPaymentProof = await uploadImage(paymentProof[0], 'client-docs', `${uploadFolder}/payment.${ext}`);
+      } else if (paymentProof.length > 0) {
+        uploadedPaymentProof = paymentProof[0];
+      }
+
+      setSubmitStatus('Saving registration…');
       await addClient({
         type: clientType,
         natureOfBiz,
@@ -203,8 +233,10 @@ export default function RegisterScreen() {
         shelfItems: [],
         referral,
         director,
-        identification: meansOfId ? { type: meansOfId as MeansOfId, number: meansOfIdNum } : undefined,
-        pictures: [],
+        identification: meansOfId
+          ? { type: meansOfId as MeansOfId, number: meansOfIdNum, image: uploadedIdImage }
+          : undefined,
+        pictures: uploadedPictures,
         paymentBand,
         duration,
         paymentMethod,
@@ -220,10 +252,11 @@ export default function RegisterScreen() {
         'The client registration has been submitted for admin approval. The client will become visible once approved.',
         [{ text: 'OK', onPress: () => router.push('/') }]
       );
-    } catch {
-      Alert.alert('Error', 'Could not submit registration. Check your internet connection and try again.');
+    } catch (err: any) {
+      Alert.alert('Error', err?.message ?? 'Could not submit registration. Check your internet connection and try again.');
     } finally {
       setSubmitting(false);
+      setSubmitStatus('');
     }
   }
 
@@ -366,6 +399,16 @@ export default function RegisterScreen() {
               <FieldRow label="Additional Info / Portfolio">
                 <Input value={info} onChangeText={setInfo} placeholder="Additional competence, notable works, contracts executed…" multiline numberOfLines={4} />
               </FieldRow>
+
+              <FieldRow label="Business Photos">
+                <ImageUploader
+                  images={businessPictures}
+                  onChange={setBusinessPictures}
+                  maxImages={5}
+                  uploading={submitting}
+                  note="Add up to 5 photos of the business premises, products, or work samples."
+                />
+              </FieldRow>
             </>
           )}
 
@@ -397,7 +440,17 @@ export default function RegisterScreen() {
                 </FieldRow>
               )}
 
-              <Text style={styles.sectionNote}>Photo Upload (Coming soon — physical copies to be handed to agent)</Text>
+              {meansOfId && (
+                <FieldRow label="ID Document Photo">
+                  <ImageUploader
+                    images={idDocImage}
+                    onChange={setIdDocImage}
+                    maxImages={1}
+                    uploading={submitting}
+                    note="Take a clear photo of the ID document."
+                  />
+                </FieldRow>
+              )}
             </>
           )}
 
@@ -499,6 +552,16 @@ export default function RegisterScreen() {
                 </Text>
               </View>
 
+              <FieldRow label="Payment Proof / Receipt">
+                <ImageUploader
+                  images={paymentProof}
+                  onChange={setPaymentProof}
+                  maxImages={1}
+                  uploading={submitting}
+                  note="Upload a screenshot or photo of the payment receipt (optional at registration)."
+                />
+              </FieldRow>
+
               <FieldRow label="Agent / Staff Code" required>
                 <Input value={agentCode} onChangeText={setAgentCode} placeholder="Enter your assigned agent code" />
               </FieldRow>
@@ -542,7 +605,7 @@ export default function RegisterScreen() {
           ) : (
             <TouchableOpacity style={[styles.submitBtn, submitting && { opacity: 0.6 }]} onPress={handleSubmit} disabled={submitting}>
               <Ionicons name="checkmark-circle" size={18} color={Colors.white} />
-              <Text style={styles.submitBtnText}>{submitting ? 'Submitting…' : 'Submit Registration'}</Text>
+              <Text style={styles.submitBtnText}>{submitting ? (submitStatus || 'Submitting…') : 'Submit Registration'}</Text>
             </TouchableOpacity>
           )}
         </View>

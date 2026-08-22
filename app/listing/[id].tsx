@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert, TextInput, Modal,
+  Image, FlatList, Dimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -146,6 +147,18 @@ export default function ListingDetailScreen() {
             </TouchableOpacity>
           ) : null}
         </View>
+
+        {/* Photo Gallery */}
+        {client.pictures && client.pictures.length > 0 && (
+          <View style={styles.galleryWrap}>
+            <Text style={styles.galleryTitle}>Photos</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gallery}>
+              {client.pictures.map((uri, i) => (
+                <Image key={i} source={{ uri }} style={styles.galleryImg} resizeMode="cover" />
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Info cards */}
         <InfoCard title="About">
@@ -308,6 +321,27 @@ const styles = StyleSheet.create({
     gap: 6, borderRadius: 10, paddingVertical: 12,
   },
   actionBtnText: { color: Colors.white, fontWeight: '700', fontSize: 13 },
+
+  galleryWrap: {
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    paddingVertical: 12,
+  },
+  galleryTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.textDark,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+  },
+  gallery: { paddingHorizontal: 14, gap: 8 },
+  galleryImg: {
+    width: 160,
+    height: 120,
+    borderRadius: 10,
+    backgroundColor: Colors.borderLight,
+  },
 
   infoCard: {
     backgroundColor: Colors.bgCard, margin: 12, marginBottom: 0, borderRadius: 12,
