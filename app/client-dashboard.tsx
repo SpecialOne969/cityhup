@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Platform, Image,
 } from 'react-native';
@@ -43,10 +43,13 @@ export default function ClientDashboard() {
   const [newItemDesc, setNewItemDesc] = useState('');
   const [newItemOffer, setNewItemOffer] = useState(false);
 
-  if (!currentClient) {
-    router.replace('/client-login');
-    return null;
-  }
+  useEffect(() => {
+    if (!currentClient) {
+      router.replace('/client-login' as any);
+    }
+  }, [currentClient]);
+
+  if (!currentClient) return null;
 
   const status = STATUS_CONFIG[currentClient.status];
 
@@ -67,12 +70,12 @@ export default function ClientDashboard() {
       const newPics = pictures.filter(p => !p.startsWith('http'));
       if (newPics.length > 0) {
         setUploadingPhotos(true);
-        const uploaded = await uploadImages(newPics, 'client-pictures', `client-${currentClient.id}`);
+        const uploaded = await uploadImages(newPics, 'client-pictures', `client-${currentClient!.id}`);
         uploadedPictures = [...pictures.filter(p => p.startsWith('http')), ...uploaded];
         setUploadingPhotos(false);
       }
 
-      await updateClientProfile(currentClient.id, {
+      await updateClientProfile(currentClient!.id, {
         phone,
         address,
         competence,

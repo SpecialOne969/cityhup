@@ -261,7 +261,6 @@ export default function RegisterScreen() {
         info,
         infoImages: [],
         websiteLink,
-        shelfItems: [],
         referral,
         director,
         identification: meansOfId

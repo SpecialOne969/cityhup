@@ -27,7 +27,7 @@ export default function ClientLoginScreen() {
     const ok = await clientLogin(email.trim().toLowerCase(), password);
     setLoading(false);
     if (ok) {
-      router.replace('/client-dashboard');
+      router.replace('/client-dashboard' as any);
     } else {
       Alert.alert('Login Failed', 'Email or password is incorrect. If you have not set up your portal login yet, tap "First-time Setup" below.');
     }
@@ -50,7 +50,7 @@ export default function ClientLoginScreen() {
     const result = await setupClientLogin(email.trim().toLowerCase(), password);
     setLoading(false);
     if (result === 'ok') {
-      router.replace('/client-dashboard');
+      router.replace('/client-dashboard' as any);
     } else if (result === 'no_listing') {
       Alert.alert(
         'No Listing Found',

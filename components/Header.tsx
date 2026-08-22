@@ -62,7 +62,7 @@ export default function Header() {
             </TouchableOpacity>
           )}
           {currentClient ? (
-            <TouchableOpacity style={styles.myBusinessBtn} onPress={() => router.push('/client-dashboard')}>
+            <TouchableOpacity style={styles.myBusinessBtn} onPress={() => router.push('/client-dashboard' as any)}>
               <Ionicons name="briefcase-outline" size={16} color={Colors.gold} />
               <Text style={styles.myBusinessText} numberOfLines={1}>My Business</Text>
             </TouchableOpacity>
