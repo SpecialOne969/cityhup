@@ -68,6 +68,13 @@ export default function AdminDashboard() {
         </TouchableOpacity>
       </View>
 
+      {/* Quick links */}
+      <TouchableOpacity style={styles.adsLink} onPress={() => router.push('/admin/ads')}>
+        <Ionicons name="megaphone-outline" size={16} color={Colors.white} />
+        <Text style={styles.adsLinkText}>Manage Ads</Text>
+        <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.7)" />
+      </TouchableOpacity>
+
       {/* Stats */}
       <View style={styles.statsRow}>
         <StatCard label="Pending" value={pending.length} color={Colors.warning} icon="time" />
@@ -212,6 +219,11 @@ const styles = StyleSheet.create({
   headerSub: { fontSize: 11, color: 'rgba(255,255,255,0.75)' },
   logoutBtn: { padding: 4 },
 
+  adsLink: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.primaryDark, paddingHorizontal: 16, paddingVertical: 10,
+  },
+  adsLinkText: { flex: 1, color: Colors.white, fontSize: 13, fontWeight: '600' },
   statsRow: { flexDirection: 'row', padding: 12, gap: 8 },
   statCard: {
     flex: 1, backgroundColor: Colors.bgCard, borderRadius: 10, padding: 10,

@@ -32,6 +32,12 @@ export default function ListingCard({ client, compact = false }: Props) {
         <Text style={styles.stripLabel} numberOfLines={1}>
           {primaryCat?.label ?? 'Service Provider'}
         </Text>
+        {client.isPremium && (
+          <View style={styles.premiumBadge}>
+            <Ionicons name="star" size={10} color={Colors.primaryDark} />
+            <Text style={styles.premiumBadgeText}>Premium</Text>
+          </View>
+        )}
         {client.type === 'corporate' && (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>Corporate</Text>
@@ -95,6 +101,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   stripLabel: { flex: 1, color: Colors.white, fontSize: 12, fontWeight: '600' },
+  premiumBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: Colors.gold,
+    borderRadius: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  premiumBadgeText: { color: Colors.primaryDark, fontSize: 10, fontWeight: '800' },
   badge: {
     backgroundColor: 'rgba(255,255,255,0.25)',
     borderRadius: 10,

@@ -20,6 +20,7 @@ export default function ApproveClientScreen() {
   const suspendClient = useAppStore(s => s.suspendClient);
   const unsuspendClient = useAppStore(s => s.unsuspendClient);
   const markIndebted = useAppStore(s => s.markIndebted);
+  const setPremium = useAppStore(s => s.setPremium);
 
   const [confirmCode, setConfirmCode] = useState('');
   const [rejectReason, setRejectReason] = useState('');
@@ -262,6 +263,23 @@ export default function ApproveClientScreen() {
               autoCapitalize="characters"
             />
 
+            {/* Premium toggle */}
+            <TouchableOpacity
+              style={[styles.premiumBtn, client.isPremium && styles.premiumBtnActive]}
+              onPress={async () => {
+                if (!confirmCode.trim() || confirmCode.trim().toUpperCase() !== currentAdmin?.adminCode) {
+                  Alert.alert('Invalid Code', 'Enter your admin code first'); return;
+                }
+                await setPremium(client.id, !client.isPremium);
+                Alert.alert(client.isPremium ? 'Downgraded' : 'Upgraded', client.isPremium ? 'Premium status removed.' : 'Client is now Premium — their listing will appear first in search results.');
+              }}
+            >
+              <Ionicons name="star" size={16} color={client.isPremium ? Colors.primaryDark : Colors.gold} />
+              <Text style={[styles.premiumBtnText, client.isPremium && { color: Colors.primaryDark }]}>
+                {client.isPremium ? 'Remove Premium Status' : 'Grant Premium Status'}
+              </Text>
+            </TouchableOpacity>
+
             {/* Mark indebted toggle */}
             <TouchableOpacity
               style={[styles.indebtedBtn, client.isIndebted && styles.indebtedBtnActive]}
@@ -451,6 +469,14 @@ const styles = StyleSheet.create({
     paddingVertical: 13, backgroundColor: Colors.dangerLight, marginTop: 10,
   },
   suspendBtnText: { color: Colors.danger, fontWeight: '700', fontSize: 14 },
+  premiumBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1.5, borderColor: Colors.gold, borderRadius: 12,
+    paddingVertical: 12, paddingHorizontal: 14, marginTop: 10,
+    backgroundColor: Colors.accentLight,
+  },
+  premiumBtnActive: { backgroundColor: Colors.gold, borderColor: Colors.gold },
+  premiumBtnText: { color: Colors.gold, fontWeight: '700', fontSize: 13, flex: 1 },
   indebtedBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     borderWidth: 1.5, borderColor: Colors.accent, borderRadius: 12,

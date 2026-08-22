@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Client, Admin, Customer, Complaint } from '../types';
+import { Client, Admin, Customer, Complaint, Ad } from '../types';
 
 export const supabase = createClient(
   'https://udwfsahkujngleoncfey.supabase.co',
@@ -52,6 +52,7 @@ export function dbToClient(row: any): Client {
     priceMin: row.price_min ?? undefined,
     priceMax: row.price_max ?? undefined,
     priceUnit: row.price_unit ?? undefined,
+    isPremium: row.is_premium ?? false,
     rating: row.rating ?? undefined,
     reviewCount: row.review_count ?? 0,
   };
@@ -102,6 +103,7 @@ export function clientToDb(client: Partial<Client>): Record<string, any> {
   if (client.priceMin !== undefined) row.price_min = client.priceMin;
   if (client.priceMax !== undefined) row.price_max = client.priceMax;
   if (client.priceUnit !== undefined) row.price_unit = client.priceUnit;
+  if (client.isPremium !== undefined) row.is_premium = client.isPremium;
   if (client.rating !== undefined) row.rating = client.rating;
   if (client.reviewCount !== undefined) row.review_count = client.reviewCount;
   return row;
@@ -130,6 +132,25 @@ export function dbToCustomer(row: any): Customer {
     lga: row.lga ?? undefined,
     interestedCategories: row.interested_categories ?? [],
     registeredAt: row.registered_at,
+  };
+}
+
+export function dbToAd(row: any): Ad {
+  return {
+    id: row.id,
+    title: row.title,
+    subtitle: row.subtitle ?? undefined,
+    imageUrl: row.image_url ?? undefined,
+    bgColor: row.bg_color ?? '#008751',
+    icon: row.icon ?? 'megaphone',
+    linkType: row.link_type ?? 'external',
+    linkUrl: row.link_url ?? undefined,
+    linkClientId: row.link_client_id ?? undefined,
+    targetState: row.target_state ?? undefined,
+    isActive: row.is_active ?? true,
+    priority: row.priority ?? 0,
+    expiresAt: row.expires_at ?? undefined,
+    createdAt: row.created_at,
   };
 }
 

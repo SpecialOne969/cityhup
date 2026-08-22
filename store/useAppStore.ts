@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { Client, Admin, Customer, Complaint, SearchFilters } from '../types';
+import { Client, Admin, Customer, Complaint, SearchFilters, Ad } from '../types';
 import { generateClientCode } from '../constants/locations';
-import { supabase, dbToClient, clientToDb, dbToAdmin, dbToCustomer, dbToComplaint } from '../lib/supabase';
+import { supabase, dbToClient, clientToDb, dbToAdmin, dbToCustomer, dbToComplaint, dbToAd } from '../lib/supabase';
 
 interface AppState {
   // Admin auth
@@ -25,9 +25,17 @@ interface AppState {
   suspendClient: (id: string, adminCode: string, reason: string) => Promise<void>;
   unsuspendClient: (id: string, adminCode: string) => Promise<void>;
   markIndebted: (id: string, indebted: boolean) => Promise<void>;
+  setPremium: (id: string, isPremium: boolean) => Promise<void>;
   getClientById: (id: string) => Client | undefined;
   getApprovedClients: () => Client[];
   getPendingClients: () => Client[];
+
+  ads: Ad[];
+  loadAds: () => Promise<void>;
+  createAd: (data: Omit<Ad, 'id' | 'createdAt'>) => Promise<void>;
+  toggleAd: (id: string, isActive: boolean) => Promise<void>;
+  deleteAd: (id: string) => Promise<void>;
+  getAdsForState: (state?: string) => Ad[];
 
   searchFilters: SearchFilters;
   setSearchFilters: (filters: Partial<SearchFilters>) => void;
@@ -152,6 +160,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       .select('*')
       .order('registered_at', { ascending: false });
     set({ clients: (data ?? []).map(dbToClient), isLoading: false });
+    await get().loadAds();
   },
 
   addClient: async (data) => {
@@ -233,9 +242,69 @@ export const useAppStore = create<AppState>((set, get) => ({
     }));
   },
 
+  setPremium: async (id, isPremium) => {
+    await supabase.from('clients').update({ is_premium: isPremium }).eq('id', id);
+    set(state => ({
+      clients: state.clients.map(c => c.id === id ? { ...c, isPremium } : c),
+    }));
+  },
+
   getClientById: (id) => get().clients.find(c => c.id === id),
   getApprovedClients: () => get().clients.filter(c => c.status === 'approved'),
   getPendingClients: () => get().clients.filter(c => c.status === 'pending'),
+
+  ads: [],
+
+  loadAds: async () => {
+    const { data } = await supabase
+      .from('ads')
+      .select('*')
+      .order('priority', { ascending: false })
+      .order('created_at', { ascending: false });
+    set({ ads: (data ?? []).map(dbToAd) });
+  },
+
+  createAd: async (data) => {
+    const { data: inserted, error } = await supabase
+      .from('ads')
+      .insert({
+        title: data.title,
+        subtitle: data.subtitle ?? null,
+        image_url: data.imageUrl ?? null,
+        bg_color: data.bgColor,
+        icon: data.icon,
+        link_type: data.linkType,
+        link_url: data.linkUrl ?? null,
+        link_client_id: data.linkClientId ?? null,
+        target_state: data.targetState ?? null,
+        is_active: data.isActive,
+        priority: data.priority,
+        expires_at: data.expiresAt ?? null,
+      })
+      .select()
+      .single();
+    if (error || !inserted) throw new Error(error?.message ?? 'Failed to create ad');
+    set(state => ({ ads: [dbToAd(inserted), ...state.ads] }));
+  },
+
+  toggleAd: async (id, isActive) => {
+    await supabase.from('ads').update({ is_active: isActive }).eq('id', id);
+    set(state => ({
+      ads: state.ads.map(a => a.id === id ? { ...a, isActive } : a),
+    }));
+  },
+
+  deleteAd: async (id) => {
+    await supabase.from('ads').delete().eq('id', id);
+    set(state => ({ ads: state.ads.filter(a => a.id !== id) }));
+  },
+
+  getAdsForState: (state) => {
+    const { ads } = get();
+    return ads.filter(a =>
+      a.isActive && (!a.targetState || !state || a.targetState === state)
+    );
+  },
 
   searchFilters: { query: '' },
   setSearchFilters: (filters) =>
@@ -261,6 +330,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       const matchCategory = !category || c.categories.includes(category);
       return matchQuery && matchState && matchLga && matchCity && matchCategory;
     });
+    // Premium clients always appear first
+    results.sort((a, b) => (b.isPremium ? 1 : 0) - (a.isPremium ? 1 : 0));
     set({ searchResults: results });
   },
 

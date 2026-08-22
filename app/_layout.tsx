@@ -24,6 +24,7 @@ export default function RootLayout() {
         <Stack.Screen name="admin/login" />
         <Stack.Screen name="admin/dashboard" />
         <Stack.Screen name="admin/approve/[id]" />
+        <Stack.Screen name="admin/ads" />
         <Stack.Screen name="disclaimer" />
         <Stack.Screen name="customer-register" />
         <Stack.Screen name="customer-login" />

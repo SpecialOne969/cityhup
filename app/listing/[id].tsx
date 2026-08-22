@@ -87,7 +87,13 @@ export default function ListingDetailScreen() {
             <Text style={styles.heroName}>{client.businessName}</Text>
             <Text style={styles.heroCat}>{primaryCat?.label}</Text>
             <View style={styles.heroMeta}>
-              <View style={[styles.heroBadge, { backgroundColor: client.type === 'corporate' ? Colors.gold : 'rgba(255,255,255,0.3)' }]}>
+              {client.isPremium && (
+                <View style={[styles.heroBadge, { backgroundColor: Colors.gold }]}>
+                  <Ionicons name="star" size={11} color={Colors.primaryDark} />
+                  <Text style={[styles.heroBadgeText, { color: Colors.primaryDark }]}>Premium</Text>
+                </View>
+              )}
+              <View style={[styles.heroBadge, { backgroundColor: client.type === 'corporate' ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.2)' }]}>
                 <Text style={styles.heroBadgeText}>{client.type === 'corporate' ? 'Corporate' : 'Individual'}</Text>
               </View>
               <View style={[styles.heroBadge, { backgroundColor: Colors.successLight }]}>

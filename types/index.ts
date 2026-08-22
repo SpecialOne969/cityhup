@@ -83,9 +83,29 @@ export interface Client {
   priceMax?: number;
   priceUnit?: string;
 
+  // Premium status
+  isPremium?: boolean;
+
   // Rating
   rating?: number;
   reviewCount?: number;
+}
+
+export interface Ad {
+  id: string;
+  title: string;
+  subtitle?: string;
+  imageUrl?: string;
+  bgColor: string;
+  icon: string;
+  linkType: 'external' | 'client' | 'category';
+  linkUrl?: string;
+  linkClientId?: string;
+  targetState?: string;
+  isActive: boolean;
+  priority: number;
+  expiresAt?: string;
+  createdAt: string;
 }
 
 export interface Admin {
