@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
   FlatList, Dimensions, Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -19,7 +19,6 @@ const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [searchQ, setSearchQ] = useState('');
   const clients = useAppStore(s => s.clients);
   const approvedClients = clients.filter(c => c.status === 'approved');
 
@@ -27,12 +26,6 @@ export default function HomeScreen() {
 
   function countForCategory(catId: string) {
     return clients.filter(c => c.status === 'approved' && c.categories.includes(catId)).length;
-  }
-
-  function handleSearch() {
-    if (searchQ.trim()) {
-      router.push({ pathname: '/search', params: { q: searchQ.trim() } });
-    }
   }
 
   const quickCats = QUICK_CATEGORIES.map(id => CATEGORIES.find(c => c.id === id)).filter(Boolean) as typeof CATEGORIES;
@@ -45,20 +38,15 @@ export default function HomeScreen() {
         <View style={styles.hero}>
           <Text style={styles.heroTitle}>Locate Service Providers &</Text>
           <Text style={styles.heroTitle2}>Essential Goods in Your Neighborhood</Text>
-          <Text style={styles.heroSub}>Nigeria's trusted local directory — find artisans, stores, schools, properties & more.</Text>
-          <View style={styles.heroSearch}>
-            <Ionicons name="search" size={18} color={Colors.textLight} style={styles.heroSearchIcon} />
-            <TextInput
-              style={styles.heroInput}
-              placeholder="Search by service, business name, area…"
-              placeholderTextColor={Colors.textLight}
-              value={searchQ}
-              onChangeText={setSearchQ}
-              onSubmitEditing={handleSearch}
-              returnKeyType="search"
-            />
-            <TouchableOpacity style={styles.heroBtn} onPress={handleSearch}>
-              <Text style={styles.heroBtnText}>Search</Text>
+          <Text style={styles.heroSub}>West Africa's trusted local directory — find artisans, stores, schools, properties & more.</Text>
+          <View style={styles.heroCtas}>
+            <TouchableOpacity style={styles.heroBtnPrimary} onPress={() => router.push('/browse')}>
+              <Ionicons name="grid-outline" size={16} color={Colors.white} />
+              <Text style={styles.heroBtnPrimaryText}>Browse All</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.heroBtnSecondary} onPress={() => router.push('/search')}>
+              <Ionicons name="search-outline" size={16} color={Colors.primary} />
+              <Text style={styles.heroBtnSecondaryText}>Search Near Me</Text>
             </TouchableOpacity>
           </View>
 
@@ -73,8 +61,8 @@ export default function HomeScreen() {
               <Text style={styles.statText}>{CATEGORIES.length} Categories</Text>
             </View>
             <View style={styles.statChip}>
-              <Ionicons name="location-outline" size={14} color={Colors.primary} />
-              <Text style={styles.statText}>36 States</Text>
+              <Ionicons name="globe-outline" size={14} color={Colors.primary} />
+              <Text style={styles.statText}>4 Countries</Text>
             </View>
           </View>
         </View>
@@ -191,7 +179,7 @@ export default function HomeScreen() {
           <Text style={styles.footerLogo}>CITY<Text style={{ color: Colors.gold }}>HUP</Text></Text>
           <Text style={styles.footerTag}>Your Neighborhood Directory</Text>
           <Text style={styles.footerText}>© 2026 City Hup Ltd. All rights reserved.</Text>
-          <Text style={styles.footerText}>Port Harcourt, Rivers State, Nigeria</Text>
+          <Text style={styles.footerText}>Lagos, Lagos State, Nigeria</Text>
           <View style={styles.footerLinks}>
             <TouchableOpacity onPress={() => router.push('/admin/login')}>
               <Text style={styles.footerLink}>Admin Portal</Text>
@@ -250,18 +238,29 @@ const styles = StyleSheet.create({
   heroTitle: { fontSize: 22, fontWeight: '800', color: Colors.white, lineHeight: 28 },
   heroTitle2: { fontSize: 22, fontWeight: '800', color: Colors.gold, lineHeight: 28, marginBottom: 8 },
   heroSub: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginBottom: 20, lineHeight: 19 },
-  heroSearch: {
+  heroCtas: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  heroBtnPrimary: {
+    flex: 1,
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: Colors.accent,
+    borderRadius: 10,
+    paddingVertical: 13,
+  },
+  heroBtnPrimaryText: { color: Colors.white, fontWeight: '700', fontSize: 14 },
+  heroBtnSecondary: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     backgroundColor: Colors.white,
     borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 16,
-    overflow: 'hidden',
+    paddingVertical: 13,
   },
-  heroSearchIcon: { marginLeft: 12 },
-  heroInput: { flex: 1, paddingHorizontal: 10, paddingVertical: 13, fontSize: 14, color: Colors.textDark },
-  heroBtn: { backgroundColor: Colors.accent, paddingHorizontal: 18, paddingVertical: 13 },
-  heroBtnText: { color: Colors.white, fontWeight: '700', fontSize: 13 },
+  heroBtnSecondaryText: { color: Colors.primary, fontWeight: '700', fontSize: 14 },
   statRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
   statChip: {
     flexDirection: 'row',

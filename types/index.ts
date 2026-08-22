@@ -78,6 +78,11 @@ export interface Client {
   // Category tags
   categories: string[];
 
+  // Property / Rental pricing (optional)
+  priceMin?: number;
+  priceMax?: number;
+  priceUnit?: string;
+
   // Rating
   rating?: number;
   reviewCount?: number;

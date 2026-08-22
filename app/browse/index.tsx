@@ -3,24 +3,21 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView } from '
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
-import { CATEGORIES, SERVICE_CATEGORIES, GOODS_CATEGORIES } from '../../constants/categories';
+import { SERVICE_CATEGORIES, GOODS_CATEGORIES } from '../../constants/categories';
 import { useAppStore } from '../../store/useAppStore';
 import Header from '../../components/Header';
 import CategoryCard from '../../components/CategoryCard';
 
 export default function BrowseScreen() {
   const router = useRouter();
-  const [tab, setTab] = useState<'all' | 'services' | 'goods'>('all');
+  const [tab, setTab] = useState<'services' | 'goods'>('services');
   const clients = useAppStore(s => s.clients);
 
   function countForCategory(catId: string) {
     return clients.filter(c => c.status === 'approved' && c.categories.includes(catId)).length;
   }
 
-  const displayCats =
-    tab === 'services' ? SERVICE_CATEGORIES :
-    tab === 'goods' ? GOODS_CATEGORIES :
-    CATEGORIES;
+  const displayCats = tab === 'services' ? SERVICE_CATEGORIES : GOODS_CATEGORIES;
 
   return (
     <View style={styles.root}>
@@ -29,19 +26,19 @@ export default function BrowseScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={20} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.pageTitle}>All Categories</Text>
+        <Text style={styles.pageTitle}>{tab === 'services' ? 'Browse Services' : 'Browse Goods'}</Text>
       </View>
 
       {/* Tabs */}
       <View style={styles.tabs}>
-        {(['all', 'services', 'goods'] as const).map(t => (
+        {(['services', 'goods'] as const).map(t => (
           <TouchableOpacity
             key={t}
             style={[styles.tab, tab === t && styles.tabActive]}
             onPress={() => setTab(t)}
           >
             <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>
-              {t === 'all' ? 'All' : t === 'services' ? 'Service Providers' : 'Goods & Services'}
+              {t === 'services' ? 'Browse Services' : 'Browse Goods'}
             </Text>
           </TouchableOpacity>
         ))}

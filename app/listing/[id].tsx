@@ -172,6 +172,20 @@ export default function ListingDetailScreen() {
           <InfoRow icon="build" label="Competence" value={client.competence} />
           {client.cacNumber ? <InfoRow icon="document-text" label="CAC Number" value={client.cacNumber} /> : null}
           {client.director ? <InfoRow icon="person" label="Director / Person of Responsibility" value={client.director} /> : null}
+          {(client.priceMin != null || client.priceMax != null) && (
+            <View style={styles.priceRange}>
+              <Ionicons name="home-outline" size={14} color={Colors.primary} />
+              <View style={styles.infoRowText}>
+                <Text style={styles.infoLabel}>Price Range</Text>
+                <Text style={styles.priceRangeText}>
+                  {client.priceMin != null ? `₦${client.priceMin.toLocaleString()}` : ''}
+                  {client.priceMin != null && client.priceMax != null ? ' – ' : ''}
+                  {client.priceMax != null ? `₦${client.priceMax.toLocaleString()}` : ''}
+                  {client.priceUnit ? ` ${client.priceUnit}` : ''}
+                </Text>
+              </View>
+            </View>
+          )}
         </InfoCard>
 
         {/* Shelf items (for super stores) */}
@@ -305,6 +319,8 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 11, color: Colors.textLight, marginBottom: 1 },
   infoValue: { fontSize: 13, color: Colors.textDark, fontWeight: '500' },
   infoText: { fontSize: 13, color: Colors.textMedium, lineHeight: 20 },
+  priceRange: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  priceRangeText: { fontSize: 15, fontWeight: '700', color: Colors.primary },
 
   shelfItem: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',

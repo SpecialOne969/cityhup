@@ -113,6 +113,14 @@ export default function RegisterScreen() {
   // Categories
   const [selectedCats, setSelectedCats] = useState<string[]>([]);
 
+  // Property / Rental pricing
+  const [priceMin, setPriceMin] = useState('');
+  const [priceMax, setPriceMax] = useState('');
+  const [priceUnit, setPriceUnit] = useState('');
+
+  const PROPERTY_CAT_IDS = ['house-building', 'property-agent', 'real-estate', 'rental'];
+  const isPropertyClient = selectedCats.some(c => PROPERTY_CAT_IDS.includes(c));
+
   // Payment
   const [paymentBand, setPaymentBand] = useState(2000);
   const [duration, setDuration] = useState(1);
@@ -203,6 +211,9 @@ export default function RegisterScreen() {
         acceptedTerms,
         registeredBy: agentCode,
         categories: selectedCats,
+        priceMin: priceMin ? Number(priceMin) : undefined,
+        priceMax: priceMax ? Number(priceMax) : undefined,
+        priceUnit: priceUnit || undefined,
       });
       Alert.alert(
         'Registration Submitted',
@@ -415,6 +426,38 @@ export default function RegisterScreen() {
                   />
                 </TouchableOpacity>
               ))}
+
+              {isPropertyClient && (
+                <View style={styles.priceBand}>
+                  <Text style={styles.priceBandTitle}>
+                    <Ionicons name="home-outline" size={14} color={Colors.primary} /> Property / Rental Pricing
+                  </Text>
+                  <Text style={styles.priceBandSub}>Enter the price range this provider offers (optional but recommended)</Text>
+                  <View style={styles.priceRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.fieldLabel}>Min Price (₦)</Text>
+                      <Input value={priceMin} onChangeText={setPriceMin} placeholder="e.g. 500000" keyboardType="numeric" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.fieldLabel}>Max Price (₦)</Text>
+                      <Input value={priceMax} onChangeText={setPriceMax} placeholder="e.g. 5000000" keyboardType="numeric" />
+                    </View>
+                  </View>
+                  <Text style={styles.fieldLabel}>Price Unit / Period</Text>
+                  <SelectPicker
+                    options={[
+                      { label: 'Per Year', value: 'per year' },
+                      { label: 'Per Month', value: 'per month' },
+                      { label: 'Per Property', value: 'per property' },
+                      { label: 'Per Room', value: 'per room' },
+                      { label: 'Outright Sale', value: 'outright' },
+                    ]}
+                    value={priceUnit}
+                    onChange={setPriceUnit}
+                    placeholder="Select price period"
+                  />
+                </View>
+              )}
             </>
           )}
 
@@ -574,6 +617,18 @@ const styles = StyleSheet.create({
   catCheckIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   catCheckText: { flex: 1, fontSize: 13, color: Colors.textDark },
   catCheckTextActive: { color: Colors.primary, fontWeight: '600' },
+
+  priceBand: {
+    marginTop: 16,
+    backgroundColor: Colors.primaryLight,
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: Colors.primary + '40',
+  },
+  priceBandTitle: { fontSize: 13, fontWeight: '700', color: Colors.primary, marginBottom: 3 },
+  priceBandSub: { fontSize: 11, color: Colors.textMedium, marginBottom: 10 },
+  priceRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
 
   payNote: {
     flexDirection: 'row', gap: 8, backgroundColor: Colors.infoLight,

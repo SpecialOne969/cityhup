@@ -49,6 +49,9 @@ export function dbToClient(row: any): Client {
     registeredBy: row.registered_by ?? '',
     registeredAt: row.registered_at ?? new Date().toISOString(),
     categories: row.categories ?? [],
+    priceMin: row.price_min ?? undefined,
+    priceMax: row.price_max ?? undefined,
+    priceUnit: row.price_unit ?? undefined,
     rating: row.rating ?? undefined,
     reviewCount: row.review_count ?? 0,
   };
@@ -96,6 +99,9 @@ export function clientToDb(client: Partial<Client>): Record<string, any> {
   if (client.registeredBy !== undefined) row.registered_by = client.registeredBy;
   if (client.registeredAt !== undefined) row.registered_at = client.registeredAt;
   if (client.categories !== undefined) row.categories = client.categories;
+  if (client.priceMin !== undefined) row.price_min = client.priceMin;
+  if (client.priceMax !== undefined) row.price_max = client.priceMax;
+  if (client.priceUnit !== undefined) row.price_unit = client.priceUnit;
   if (client.rating !== undefined) row.rating = client.rating;
   if (client.reviewCount !== undefined) row.review_count = client.reviewCount;
   return row;

@@ -46,6 +46,9 @@ CREATE TABLE IF NOT EXISTS clients (
   registered_by TEXT,
   registered_at TIMESTAMPTZ DEFAULT NOW(),
   categories JSONB DEFAULT '[]',
+  price_min NUMERIC,
+  price_max NUMERIC,
+  price_unit TEXT,
   rating NUMERIC(3,1),
   review_count INTEGER DEFAULT 0
 );
@@ -208,3 +211,21 @@ VALUES
   '["super-store"]', 4.2, 89
 )
 ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================
+-- MIGRATIONS (run if table already exists)
+-- ============================================================
+
+-- Add property/rental price range columns (safe — IF NOT EXISTS)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'clients' AND column_name = 'price_min') THEN
+    ALTER TABLE clients ADD COLUMN price_min NUMERIC;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'clients' AND column_name = 'price_max') THEN
+    ALTER TABLE clients ADD COLUMN price_max NUMERIC;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'clients' AND column_name = 'price_unit') THEN
+    ALTER TABLE clients ADD COLUMN price_unit TEXT;
+  END IF;
+END $$;
