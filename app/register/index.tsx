@@ -13,6 +13,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { ClientType, PaymentMethod, MeansOfId } from '../../types';
 import ImageUploader from '../../components/ImageUploader';
 import { uploadImages, uploadImage } from '../../lib/uploadImage';
+import { supabase } from '../../lib/supabase';
 
 const STEPS = ['Client Type', 'Location', 'Business Info', 'Extra Details', 'Payment & Submit'];
 
@@ -126,8 +127,30 @@ export default function RegisterScreen() {
   const [priceMax, setPriceMax] = useState('');
   const [priceUnit, setPriceUnit] = useState('');
 
+  // Shelf items
+  const [shelfItems, setShelfItems] = useState<Array<{ name: string; price: string; description: string; isOffer: boolean }>>([]);
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemPrice, setNewItemPrice] = useState('');
+  const [newItemDesc, setNewItemDesc] = useState('');
+  const [newItemOffer, setNewItemOffer] = useState(false);
+
+  // Client portal login setup (optional)
+  const [clientPassword, setClientPassword] = useState('');
+  const [clientPasswordConfirm, setClientPasswordConfirm] = useState('');
+
   const PROPERTY_CAT_IDS = ['house-building', 'property-agent', 'real-estate', 'rental'];
   const isPropertyClient = selectedCats.some(c => PROPERTY_CAT_IDS.includes(c));
+
+  function addShelfItem() {
+    if (!newItemName.trim() || !newItemPrice.trim()) return;
+    setShelfItems(prev => [...prev, {
+      name: newItemName.trim(),
+      price: newItemPrice.trim(),
+      description: newItemDesc.trim(),
+      isOffer: newItemOffer,
+    }]);
+    setNewItemName(''); setNewItemPrice(''); setNewItemDesc(''); setNewItemOffer(false);
+  }
 
   // Payment
   const [paymentBand, setPaymentBand] = useState(2000);
@@ -170,6 +193,14 @@ export default function RegisterScreen() {
       }
       if (!agentCode) {
         Alert.alert('Agent Code required', 'Enter your assigned agent code to submit');
+        return false;
+      }
+      if (clientPassword && clientPassword !== clientPasswordConfirm) {
+        Alert.alert('Password mismatch', 'Client portal passwords do not match');
+        return false;
+      }
+      if (clientPassword && clientPassword.length < 6) {
+        Alert.alert('Password too short', 'Password must be at least 6 characters');
         return false;
       }
     }
@@ -243,10 +274,24 @@ export default function RegisterScreen() {
         acceptedTerms,
         registeredBy: agentCode,
         categories: selectedCats,
+        shelfItems: shelfItems.map((item, i) => ({
+          id: `item-${Date.now()}-${i}`,
+          name: item.name,
+          price: Number(item.price),
+          description: item.description || undefined,
+          isOffer: item.isOffer,
+        })),
         priceMin: priceMin ? Number(priceMin) : undefined,
         priceMax: priceMax ? Number(priceMax) : undefined,
         priceUnit: priceUnit || undefined,
       });
+
+      // Set up client portal login if password was provided
+      if (clientPassword && email) {
+        try {
+          await supabase.auth.signUp({ email, password: clientPassword });
+        } catch { /* non-fatal */ }
+      }
       Alert.alert(
         'Registration Submitted',
         'The client registration has been submitted for admin approval. The client will become visible once approved.',
@@ -480,6 +525,60 @@ export default function RegisterScreen() {
                 </TouchableOpacity>
               ))}
 
+              {/* Shelf / Price List */}
+              <View style={styles.priceBand}>
+                <Text style={styles.priceBandTitle}>
+                  <Ionicons name="pricetag-outline" size={14} color={Colors.primary} /> Products / Price List (optional)
+                </Text>
+                <Text style={styles.priceBandSub}>Add specific items, services, or prices the client offers.</Text>
+                <View style={styles.shelfInputRow}>
+                  <TextInput
+                    style={[styles.input, { flex: 2 }]}
+                    value={newItemName}
+                    onChangeText={setNewItemName}
+                    placeholder="Item / service name"
+                    placeholderTextColor={Colors.textMuted}
+                  />
+                  <TextInput
+                    style={[styles.input, { flex: 1 }]}
+                    value={newItemPrice}
+                    onChangeText={setNewItemPrice}
+                    placeholder="Price (₦)"
+                    placeholderTextColor={Colors.textMuted}
+                    keyboardType="numeric"
+                  />
+                </View>
+                <TextInput
+                  style={[styles.input, { marginBottom: 8 }]}
+                  value={newItemDesc}
+                  onChangeText={setNewItemDesc}
+                  placeholder="Short description (optional)"
+                  placeholderTextColor={Colors.textMuted}
+                />
+                <View style={styles.shelfOfferRow}>
+                  <TouchableOpacity style={styles.offerToggle} onPress={() => setNewItemOffer(v => !v)}>
+                    <Ionicons name={newItemOffer ? 'checkbox' : 'square-outline'} size={18} color={Colors.primary} />
+                    <Text style={styles.offerToggleText}>Mark as Special Offer</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.addItemBtn} onPress={addShelfItem}>
+                    <Ionicons name="add" size={16} color={Colors.white} />
+                    <Text style={styles.addItemBtnText}>Add</Text>
+                  </TouchableOpacity>
+                </View>
+                {shelfItems.map((item, i) => (
+                  <View key={i} style={styles.shelfItemRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.shelfItemName}>{item.name} {item.isOffer ? '🔥' : ''}</Text>
+                      {item.description ? <Text style={styles.shelfItemDesc}>{item.description}</Text> : null}
+                    </View>
+                    <Text style={styles.shelfItemPrice}>₦{Number(item.price).toLocaleString()}</Text>
+                    <TouchableOpacity onPress={() => setShelfItems(prev => prev.filter((_, j) => j !== i))}>
+                      <Ionicons name="close-circle-outline" size={20} color={Colors.danger} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+
               {isPropertyClient && (
                 <View style={styles.priceBand}>
                   <Text style={styles.priceBandTitle}>
@@ -561,6 +660,21 @@ export default function RegisterScreen() {
                   note="Upload a screenshot or photo of the payment receipt (optional at registration)."
                 />
               </FieldRow>
+
+              <View style={styles.payNote}>
+                <Ionicons name="lock-closed-outline" size={16} color={Colors.primary} />
+                <Text style={[styles.payNoteText, { color: Colors.primary }]}>
+                  Client Portal Login (optional) — Set up a password so the client can log into CityHup and manage their listing.
+                </Text>
+              </View>
+              <FieldRow label="Client Portal Password">
+                <Input value={clientPassword} onChangeText={setClientPassword} placeholder="Leave blank to skip" />
+              </FieldRow>
+              {clientPassword ? (
+                <FieldRow label="Confirm Password">
+                  <Input value={clientPasswordConfirm} onChangeText={setClientPasswordConfirm} placeholder="Repeat password" />
+                </FieldRow>
+              ) : null}
 
               <FieldRow label="Agent / Staff Code" required>
                 <Input value={agentCode} onChangeText={setAgentCode} placeholder="Enter your assigned agent code" />
@@ -680,6 +794,23 @@ const styles = StyleSheet.create({
   catCheckIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   catCheckText: { flex: 1, fontSize: 13, color: Colors.textDark },
   catCheckTextActive: { color: Colors.primary, fontWeight: '600' },
+
+  shelfInputRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  shelfOfferRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  offerToggle: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  offerToggleText: { fontSize: 12, color: Colors.textMedium },
+  addItemBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: Colors.primary, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8,
+  },
+  addItemBtnText: { color: Colors.white, fontSize: 13, fontWeight: '700' },
+  shelfItemRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
+  },
+  shelfItemName: { fontSize: 13, fontWeight: '600', color: Colors.textDark },
+  shelfItemDesc: { fontSize: 11, color: Colors.textLight },
+  shelfItemPrice: { fontSize: 13, fontWeight: '700', color: Colors.primary },
 
   priceBand: {
     marginTop: 16,

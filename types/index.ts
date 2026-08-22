@@ -141,11 +141,22 @@ export interface Advertisement {
 
 export interface SearchFilters {
   query: string;
+  country?: string;
   state?: string;
   lga?: string;
   city?: string;
   category?: string;
   type?: ClientType;
+}
+
+export interface Review {
+  id: string;
+  clientId: string;
+  reviewerName: string;
+  reviewerEmail?: string;
+  rating: number;
+  comment?: string;
+  createdAt: string;
 }
 
 export interface Customer {

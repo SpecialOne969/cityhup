@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { Client, Admin, Customer, Complaint, SearchFilters, Ad } from '../types';
+import { Client, Admin, Customer, Complaint, SearchFilters, Ad, Review } from '../types';
 import { generateClientCode } from '../constants/locations';
-import { supabase, dbToClient, clientToDb, dbToAdmin, dbToCustomer, dbToComplaint, dbToAd } from '../lib/supabase';
+import { supabase, dbToClient, clientToDb, dbToAdmin, dbToCustomer, dbToComplaint, dbToAd, dbToReview } from '../lib/supabase';
 
 interface AppState {
   // Admin auth
@@ -9,6 +9,13 @@ interface AppState {
   login: (code: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   restoreSession: () => Promise<void>;
+
+  // Client portal auth
+  currentClient: Client | null;
+  clientLogin: (email: string, password: string) => Promise<boolean>;
+  clientLogout: () => Promise<void>;
+  setupClientLogin: (email: string, password: string) => Promise<'ok' | 'no_listing' | 'error'>;
+  updateClientProfile: (id: string, data: Partial<Client>) => Promise<void>;
 
   // Customer auth
   currentCustomer: Customer | null;
@@ -45,6 +52,10 @@ interface AppState {
   complaints: Complaint[];
   loadComplaints: () => Promise<void>;
   addComplaint: (data: Omit<Complaint, 'id' | 'status' | 'createdAt'>) => Promise<void>;
+
+  reviews: Record<string, Review[]>;
+  loadReviews: (clientId: string) => Promise<void>;
+  addReview: (data: Omit<Review, 'id' | 'createdAt'>) => Promise<void>;
 
   trafficCount: number;
   incrementTraffic: () => void;
@@ -97,23 +108,72 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
     const { data: adminRow } = await supabase
-      .from('admins')
-      .select('*')
-      .eq('id', session.user.id)
-      .maybeSingle();
+      .from('admins').select('*').eq('id', session.user.id).maybeSingle();
 
     if (adminRow) {
       set({ currentAdmin: dbToAdmin(adminRow) });
       await get().loadComplaints();
     } else {
       const { data: customerRow } = await supabase
-        .from('customers')
-        .select('*')
-        .eq('id', session.user.id)
-        .maybeSingle();
-      if (customerRow) set({ currentCustomer: dbToCustomer(customerRow) });
+        .from('customers').select('*').eq('id', session.user.id).maybeSingle();
+      if (customerRow) {
+        set({ currentCustomer: dbToCustomer(customerRow) });
+      } else {
+        // Check client portal
+        const email = session.user.email;
+        if (email) {
+          const { data: clientRow } = await supabase
+            .from('clients').select('*').eq('email', email).maybeSingle();
+          if (clientRow) set({ currentClient: dbToClient(clientRow) });
+        }
+      }
     }
     await get().loadClients();
+  },
+
+  currentClient: null,
+
+  clientLogin: async (email, password) => {
+    const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error || !authData.user) return false;
+    const { data: row } = await supabase
+      .from('clients').select('*').eq('email', email).maybeSingle();
+    if (!row) { await supabase.auth.signOut(); return false; }
+    set({ currentClient: dbToClient(row) });
+    return true;
+  },
+
+  clientLogout: async () => {
+    await supabase.auth.signOut();
+    set({ currentClient: null });
+  },
+
+  setupClientLogin: async (email, password) => {
+    const { data: clientRow } = await supabase
+      .from('clients').select('id').eq('email', email).maybeSingle();
+    if (!clientRow) return 'no_listing';
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) return 'error';
+    // Sign in immediately (email confirm disabled in Supabase dashboard)
+    const { data: authData } = await supabase.auth.signInWithPassword({ email, password });
+    if (authData.user) {
+      const { data: row } = await supabase
+        .from('clients').select('*').eq('email', email).maybeSingle();
+      if (row) set({ currentClient: dbToClient(row) });
+    }
+    return 'ok';
+  },
+
+  updateClientProfile: async (id, data) => {
+    const row = clientToDb(data);
+    const { data: updated } = await supabase
+      .from('clients').update(row).eq('id', id).select().single();
+    if (updated) {
+      set(state => ({
+        clients: state.clients.map(c => c.id === id ? dbToClient(updated) : c),
+        currentClient: state.currentClient?.id === id ? dbToClient(updated) : state.currentClient,
+      }));
+    }
   },
 
   currentCustomer: null,
@@ -314,7 +374,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   runSearch: () => {
     const { clients, searchFilters } = get();
     const approved = clients.filter(c => c.status === 'approved' && !c.isIndebted);
-    const { query, state, lga, city, category } = searchFilters;
+    const { query, country, state, lga, city, category } = searchFilters;
     const q = query.toLowerCase();
     const results = approved.filter(c => {
       const matchQuery =
@@ -324,11 +384,12 @@ export const useAppStore = create<AppState>((set, get) => ({
         c.profile.toLowerCase().includes(q) ||
         c.natureOfBiz.toLowerCase().includes(q) ||
         c.categories.some(cat => cat.toLowerCase().includes(q));
+      const matchCountry = !country || c.country === country;
       const matchState = !state || c.state === state;
       const matchLga = !lga || c.lga === lga;
       const matchCity = !city || c.city.toLowerCase().includes(city.toLowerCase());
       const matchCategory = !category || c.categories.includes(category);
-      return matchQuery && matchState && matchLga && matchCity && matchCategory;
+      return matchQuery && matchCountry && matchState && matchLga && matchCity && matchCategory;
     });
     // Premium clients always appear first
     results.sort((a, b) => (b.isPremium ? 1 : 0) - (a.isPremium ? 1 : 0));
@@ -363,6 +424,52 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     const complaint = dbToComplaint(inserted);
     set(state => ({ complaints: [complaint, ...state.complaints] }));
+  },
+
+  reviews: {},
+
+  loadReviews: async (clientId) => {
+    const { data } = await supabase
+      .from('reviews')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: false });
+    set(state => ({
+      reviews: { ...state.reviews, [clientId]: (data ?? []).map(dbToReview) },
+    }));
+  },
+
+  addReview: async ({ clientId, reviewerName, reviewerEmail, rating, comment }) => {
+    const { data: inserted, error } = await supabase
+      .from('reviews')
+      .insert({
+        client_id: clientId,
+        reviewer_name: reviewerName,
+        reviewer_email: reviewerEmail ?? null,
+        rating,
+        comment: comment ?? null,
+      })
+      .select()
+      .single();
+    if (error || !inserted) throw new Error(error?.message ?? 'Failed to submit review');
+    const review = dbToReview(inserted);
+    set(state => {
+      const existing = state.reviews[clientId] ?? [];
+      const updated = [review, ...existing];
+      const avgRating = updated.reduce((s, r) => s + r.rating, 0) / updated.length;
+      supabase.from('clients').update({
+        rating: Math.round(avgRating * 10) / 10,
+        review_count: updated.length,
+      }).eq('id', clientId).then(() => {});
+      return {
+        reviews: { ...state.reviews, [clientId]: updated },
+        clients: state.clients.map(c =>
+          c.id === clientId
+            ? { ...c, rating: Math.round(avgRating * 10) / 10, reviewCount: updated.length }
+            : c
+        ),
+      };
+    });
   },
 
   trafficCount: 14872,

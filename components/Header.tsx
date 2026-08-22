@@ -11,6 +11,7 @@ import { useAppStore } from '../store/useAppStore';
 export default function Header() {
   const router = useRouter();
   const currentCustomer = useAppStore(s => s.currentCustomer);
+  const currentClient = useAppStore(s => s.currentClient);
   const [query, setQuery] = useState('');
 
   const handleSearch = () => {
@@ -60,10 +61,17 @@ export default function Header() {
               <Text style={styles.signInText}>Sign In</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={styles.registerBtn} onPress={() => router.push('/register')}>
-            <Ionicons name="business-outline" size={16} color={Colors.accent} />
-            <Text style={styles.registerBtnText}>List Business</Text>
-          </TouchableOpacity>
+          {currentClient ? (
+            <TouchableOpacity style={styles.myBusinessBtn} onPress={() => router.push('/client-dashboard')}>
+              <Ionicons name="briefcase-outline" size={16} color={Colors.gold} />
+              <Text style={styles.myBusinessText} numberOfLines={1}>My Business</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.registerBtn} onPress={() => router.push('/register')}>
+              <Ionicons name="business-outline" size={16} color={Colors.accent} />
+              <Text style={styles.registerBtnText}>List Business</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -165,6 +173,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 6,
   },
   registerBtnText: { color: Colors.accent, fontSize: 12, fontWeight: '700' },
+  myBusinessBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: Colors.primaryDark, borderRadius: 6,
+    paddingHorizontal: 10, paddingVertical: 6,
+    borderWidth: 1, borderColor: Colors.gold,
+  },
+  myBusinessText: { color: Colors.gold, fontSize: 12, fontWeight: '700', maxWidth: 90 },
   navBar: { backgroundColor: Colors.primaryDark },
   navScroll: { paddingHorizontal: 12 },
   navItem: { paddingHorizontal: 14, paddingVertical: 10 },

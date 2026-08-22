@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Client, Admin, Customer, Complaint, Ad } from '../types';
+import { Client, Admin, Customer, Complaint, Ad, Review } from '../types';
 
 export const supabase = createClient(
   'https://udwfsahkujngleoncfey.supabase.co',
@@ -150,6 +150,18 @@ export function dbToAd(row: any): Ad {
     isActive: row.is_active ?? true,
     priority: row.priority ?? 0,
     expiresAt: row.expires_at ?? undefined,
+    createdAt: row.created_at,
+  };
+}
+
+export function dbToReview(row: any): Review {
+  return {
+    id: row.id,
+    clientId: row.client_id,
+    reviewerName: row.reviewer_name,
+    reviewerEmail: row.reviewer_email ?? undefined,
+    rating: row.rating,
+    comment: row.comment ?? undefined,
     createdAt: row.created_at,
   };
 }

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert, TextInput, Modal,
-  Image, FlatList, Dimensions,
+  Image, Dimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,11 +15,26 @@ export default function ListingDetailScreen() {
   const clients = useAppStore(s => s.clients);
   const client = clients.find(c => c.id === (id ?? ''));
   const addComplaint = useAppStore(s => s.addComplaint);
+  const loadReviews = useAppStore(s => s.loadReviews);
+  const addReview = useAppStore(s => s.addReview);
+  const allReviews = useAppStore(s => s.reviews);
+  const reviews = client ? (allReviews[client.id] ?? []) : [];
 
   const [showComplaint, setShowComplaint] = useState(false);
   const [complainName, setComplainName] = useState('');
   const [complainPhone, setComplainPhone] = useState('');
   const [complainDesc, setComplainDesc] = useState('');
+
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewName, setReviewName] = useState('');
+  const [reviewEmail, setReviewEmail] = useState('');
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (client) loadReviews(client.id);
+  }, [client?.id]);
 
   if (!client) {
     return (
@@ -50,6 +65,28 @@ export default function ListingDetailScreen() {
   function handleMap() {
     const query = encodeURIComponent(`${client.address}, ${client.nearestLandmark}, ${client.city}, ${client.state}, Nigeria`);
     Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`);
+  }
+
+  async function submitReview() {
+    if (!reviewName.trim()) { Alert.alert('Required', 'Please enter your name'); return; }
+    if (reviewRating === 0) { Alert.alert('Required', 'Please select a star rating'); return; }
+    setReviewSubmitting(true);
+    try {
+      await addReview({
+        clientId: client!.id,
+        reviewerName: reviewName.trim(),
+        reviewerEmail: reviewEmail.trim() || undefined,
+        rating: reviewRating,
+        comment: reviewComment.trim() || undefined,
+      });
+      Alert.alert('Thank you!', 'Your review has been submitted.');
+      setShowReviewForm(false);
+      setReviewName(''); setReviewEmail(''); setReviewRating(0); setReviewComment('');
+    } catch {
+      Alert.alert('Error', 'Could not submit review. Try again.');
+    } finally {
+      setReviewSubmitting(false);
+    }
   }
 
   async function submitComplaint() {
@@ -233,6 +270,65 @@ export default function ListingDetailScreen() {
           {client.referral ? <InfoRow icon="people" label="Referral / Guarantor" value={client.referral} /> : null}
         </InfoCard>
 
+        {/* Reviews */}
+        <View style={styles.reviewsSection}>
+          <View style={styles.reviewsHeader}>
+            <Text style={styles.reviewsTitle}>Reviews ({reviews.length})</Text>
+            <TouchableOpacity style={styles.writeReviewBtn} onPress={() => setShowReviewForm(v => !v)}>
+              <Ionicons name="star-outline" size={14} color={Colors.primary} />
+              <Text style={styles.writeReviewBtnText}>Write a Review</Text>
+            </TouchableOpacity>
+          </View>
+
+          {showReviewForm && (
+            <View style={styles.reviewForm}>
+              <TextInput style={styles.reviewInput} placeholder="Your name *" value={reviewName} onChangeText={setReviewName} placeholderTextColor={Colors.textMuted} />
+              <TextInput style={styles.reviewInput} placeholder="Email (optional)" value={reviewEmail} onChangeText={setReviewEmail} placeholderTextColor={Colors.textMuted} keyboardType="email-address" />
+              <View style={styles.starRow}>
+                {[1,2,3,4,5].map(s => (
+                  <TouchableOpacity key={s} onPress={() => setReviewRating(s)}>
+                    <Ionicons name={s <= reviewRating ? 'star' : 'star-outline'} size={28} color={Colors.gold} />
+                  </TouchableOpacity>
+                ))}
+                <Text style={styles.ratingLabel}>{reviewRating > 0 ? `${reviewRating}/5` : 'Tap to rate'}</Text>
+              </View>
+              <TextInput
+                style={[styles.reviewInput, { height: 80, textAlignVertical: 'top' }]}
+                placeholder="Your review (optional)"
+                value={reviewComment}
+                onChangeText={setReviewComment}
+                multiline
+                placeholderTextColor={Colors.textMuted}
+              />
+              <TouchableOpacity
+                style={[styles.reviewSubmitBtn, reviewSubmitting && { opacity: 0.6 }]}
+                onPress={submitReview}
+                disabled={reviewSubmitting}
+              >
+                <Text style={styles.reviewSubmitBtnText}>{reviewSubmitting ? 'Submitting…' : 'Submit Review'}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {reviews.length === 0 && !showReviewForm && (
+            <Text style={styles.noReviews}>No reviews yet. Be the first!</Text>
+          )}
+          {reviews.map(r => (
+            <View key={r.id} style={styles.reviewCard}>
+              <View style={styles.reviewCardHeader}>
+                <Text style={styles.reviewerName}>{r.reviewerName}</Text>
+                <View style={styles.reviewStars}>
+                  {[1,2,3,4,5].map(s => (
+                    <Ionicons key={s} name={s <= r.rating ? 'star' : 'star-outline'} size={13} color={Colors.gold} />
+                  ))}
+                </View>
+                <Text style={styles.reviewDate}>{new Date(r.createdAt).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' })}</Text>
+              </View>
+              {r.comment ? <Text style={styles.reviewComment}>{r.comment}</Text> : null}
+            </View>
+          ))}
+        </View>
+
         {/* Complaint button */}
         <TouchableOpacity style={styles.complainBtn} onPress={() => setShowComplaint(true)}>
           <Ionicons name="alert-circle-outline" size={16} color={Colors.danger} />
@@ -373,6 +469,41 @@ const styles = StyleSheet.create({
   shelfItemPrice: { fontSize: 14, fontWeight: '700', color: Colors.primary },
   offerBadge: { backgroundColor: Colors.danger, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2 },
   offerBadgeText: { color: Colors.white, fontSize: 9, fontWeight: '800' },
+
+  reviewsSection: { margin: 12, marginBottom: 0 },
+  reviewsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  reviewsTitle: { fontSize: 15, fontWeight: '700', color: Colors.textDark },
+  writeReviewBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: Colors.primaryLight, borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 6,
+  },
+  writeReviewBtnText: { fontSize: 12, color: Colors.primary, fontWeight: '600' },
+  reviewForm: {
+    backgroundColor: Colors.bgCard, borderRadius: 10, padding: 12,
+    borderWidth: 1, borderColor: Colors.borderLight, marginBottom: 10,
+  },
+  reviewInput: {
+    borderWidth: 1, borderColor: Colors.border, borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 9, fontSize: 13,
+    color: Colors.textDark, marginBottom: 8,
+  },
+  starRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  ratingLabel: { fontSize: 13, color: Colors.textMedium, marginLeft: 4 },
+  reviewSubmitBtn: {
+    backgroundColor: Colors.primary, borderRadius: 8, paddingVertical: 12, alignItems: 'center',
+  },
+  reviewSubmitBtnText: { color: Colors.white, fontWeight: '700', fontSize: 14 },
+  noReviews: { fontSize: 13, color: Colors.textMuted, textAlign: 'center', paddingVertical: 16 },
+  reviewCard: {
+    backgroundColor: Colors.bgCard, borderRadius: 10, padding: 12, marginBottom: 8,
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  reviewCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' },
+  reviewerName: { fontSize: 13, fontWeight: '700', color: Colors.textDark },
+  reviewStars: { flexDirection: 'row', gap: 2 },
+  reviewDate: { fontSize: 11, color: Colors.textLight, marginLeft: 'auto' },
+  reviewComment: { fontSize: 13, color: Colors.textMedium, lineHeight: 18 },
 
   complainBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
