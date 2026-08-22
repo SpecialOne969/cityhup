@@ -21,11 +21,11 @@ const SORT_LABELS: Record<SortOption, string> = {
 };
 
 export default function SearchScreen() {
-  const params = useLocalSearchParams<{ q?: string; category?: string }>();
+  const params = useLocalSearchParams<{ q?: string; category?: string; country?: string }>();
   const router = useRouter();
 
   const [query, setQuery] = useState(params.q ?? '');
-  const [countryFilter, setCountryFilter] = useState('');
+  const [countryFilter, setCountryFilter] = useState(params.country ?? '');
   const [stateFilter, setStateFilter] = useState('');
   const [lgaFilter, setLgaFilter] = useState('');
   const [catFilter, setCatFilter] = useState(params.category ?? '');
@@ -52,9 +52,10 @@ export default function SearchScreen() {
   useEffect(() => {
     setQuery(params.q ?? '');
     setCatFilter(params.category ?? '');
-    setSearchFilters({ query: params.q ?? '', category: params.category ?? '' });
+    setCountryFilter(params.country ?? '');
+    setSearchFilters({ query: params.q ?? '', category: params.category ?? '', country: params.country ?? '' });
     runSearch();
-  }, [params.q, params.category]);
+  }, [params.q, params.category, params.country]);
 
   // Auto-run when filters change (after mount)
   useEffect(() => {

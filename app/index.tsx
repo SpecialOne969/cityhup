@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   FlatList, Dimensions, Linking,
@@ -17,8 +17,48 @@ import ThemeSwitcher from '../components/ThemeSwitcher';
 
 const { width } = Dimensions.get('window');
 
+const COUNTRY_CONFIG = [
+  {
+    name: 'Nigeria',
+    flag: '🇳🇬',
+    capital: 'Abuja',
+    currency: 'NGN ₦',
+    color: '#008751',
+    bg: '#E8F5E9',
+    desc: 'West Africa\'s largest economy',
+  },
+  {
+    name: 'Ghana',
+    flag: '🇬🇭',
+    capital: 'Accra',
+    currency: 'GHS ₵',
+    color: '#006B3F',
+    bg: '#FFF8E1',
+    desc: 'Gateway to West Africa',
+  },
+  {
+    name: 'Benin Republic',
+    flag: '🇧🇯',
+    capital: 'Cotonou',
+    currency: 'XOF CFA',
+    color: '#008751',
+    bg: '#FFF3E0',
+    desc: 'Birthplace of Voodoo culture',
+  },
+  {
+    name: 'Liberia',
+    flag: '🇱🇷',
+    capital: 'Monrovia',
+    currency: 'LRD $',
+    color: '#BF0A30',
+    bg: '#FFEBEE',
+    desc: 'Africa\'s oldest republic',
+  },
+];
+
 export default function HomeScreen() {
   const router = useRouter();
+  const scrollRef = useRef<ScrollView>(null);
   const clients = useAppStore(s => s.clients);
   const approvedClients = clients.filter(c => c.status === 'approved');
 
@@ -28,12 +68,16 @@ export default function HomeScreen() {
     return clients.filter(c => c.status === 'approved' && c.categories.includes(catId)).length;
   }
 
+  function countForCountry(country: string) {
+    return approvedClients.filter(c => c.country === country).length;
+  }
+
   const quickCats = QUICK_CATEGORIES.map(id => CATEGORIES.find(c => c.id === id)).filter(Boolean) as typeof CATEGORIES;
 
   return (
     <View style={styles.root}>
       <Header />
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90 }}>
+      <ScrollView ref={scrollRef} style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90 }}>
         {/* Hero */}
         <View style={styles.hero}>
           <Text style={styles.heroTitle}>Locate Service Providers &</Text>
@@ -52,23 +96,66 @@ export default function HomeScreen() {
 
           {/* Quick stat chips */}
           <View style={styles.statRow}>
-            <View style={styles.statChip}>
+            <TouchableOpacity style={styles.statChip} onPress={() => router.push('/search')}>
               <Ionicons name="people-outline" size={14} color={Colors.primary} />
               <Text style={styles.statText}>{approvedClients.length}+ Providers</Text>
-            </View>
-            <View style={styles.statChip}>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.statChip} onPress={() => router.push('/browse')}>
               <Ionicons name="grid-outline" size={14} color={Colors.primary} />
               <Text style={styles.statText}>{CATEGORIES.length} Categories</Text>
-            </View>
-            <View style={styles.statChip}>
-              <Ionicons name="globe-outline" size={14} color={Colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.statChip}
+              onPress={() => scrollRef.current?.scrollTo({ y: 600, animated: true })}
+            >
+              <Text style={styles.statFlag}>🌍</Text>
               <Text style={styles.statText}>4 Countries</Text>
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
 
         {/* Ad Banner + Traffic */}
         <AdBanner />
+
+        {/* Browse by Country */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Browse by Country</Text>
+            <Text style={styles.countrySubtitle}>West Africa</Text>
+          </View>
+          <View style={styles.countryGrid}>
+            {COUNTRY_CONFIG.map(country => {
+              const count = countForCountry(country.name);
+              return (
+                <TouchableOpacity
+                  key={country.name}
+                  style={[styles.countryCard, { borderColor: country.color }]}
+                  onPress={() => router.push({ pathname: '/search', params: { country: country.name } })}
+                  activeOpacity={0.85}
+                >
+                  <View style={[styles.countryFlagBox, { backgroundColor: country.bg }]}>
+                    <Text style={styles.countryFlag}>{country.flag}</Text>
+                  </View>
+                  <View style={styles.countryInfo}>
+                    <Text style={styles.countryName}>{country.name}</Text>
+                    <Text style={styles.countryCapital}>
+                      <Ionicons name="location-outline" size={10} color={Colors.textLight} /> {country.capital}
+                    </Text>
+                    <Text style={styles.countryCurrency}>{country.currency}</Text>
+                    <Text style={styles.countryDesc} numberOfLines={2}>{country.desc}</Text>
+                  </View>
+                  <View style={styles.countryRight}>
+                    <View style={[styles.countryCountBadge, { backgroundColor: country.color }]}>
+                      <Text style={styles.countryCountNum}>{count}</Text>
+                      <Text style={styles.countryCountLabel}>listings</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={country.color} style={{ marginTop: 8 }} />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
 
         {/* Quick Category Grid */}
         <View style={styles.section}>
@@ -272,6 +359,46 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   statText: { fontSize: 11, color: Colors.primary, fontWeight: '600' },
+  statFlag: { fontSize: 14, lineHeight: 18 },
+
+  // Country section
+  countrySubtitle: { fontSize: 12, color: Colors.textLight, fontStyle: 'italic' },
+  countryGrid: { gap: 10 },
+  countryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.bgCard,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+  },
+  countryFlagBox: {
+    width: 72,
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+  },
+  countryFlag: { fontSize: 36, lineHeight: 42 },
+  countryInfo: { flex: 1, paddingVertical: 12, paddingHorizontal: 10, gap: 2 },
+  countryName: { fontSize: 15, fontWeight: '800', color: Colors.textDark },
+  countryCapital: { fontSize: 11, color: Colors.textLight, marginTop: 1 },
+  countryCurrency: { fontSize: 11, color: Colors.textMedium, fontWeight: '600' },
+  countryDesc: { fontSize: 11, color: Colors.textLight, marginTop: 3, lineHeight: 15 },
+  countryRight: {
+    alignItems: 'center',
+    paddingRight: 12,
+    paddingVertical: 12,
+  },
+  countryCountBadge: {
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    alignItems: 'center',
+    minWidth: 52,
+  },
+  countryCountNum: { fontSize: 17, fontWeight: '900', color: Colors.white },
+  countryCountLabel: { fontSize: 9, color: 'rgba(255,255,255,0.85)', fontWeight: '600', textTransform: 'uppercase' },
 
   // Sections
   section: { padding: 16, marginBottom: 4 },
