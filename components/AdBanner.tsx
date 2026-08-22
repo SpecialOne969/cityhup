@@ -20,7 +20,8 @@ export default function AdBanner() {
   const router = useRouter();
   const trafficCount = useAppStore(s => s.trafficCount);
   const incrementTraffic = useAppStore.getState().incrementTraffic;
-  const storeAds = useAppStore(s => s.ads.filter(a => a.isActive));
+  const ads = useAppStore(s => s.ads);
+  const storeAds = ads.filter(a => a.isActive);
   const scrollRef = useRef<ScrollView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
