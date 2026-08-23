@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Platform, ScrollView,
+  View, Text, StyleSheet, TextInput, TouchableOpacity, Platform, ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,14 +16,16 @@ export default function CustomerLoginScreen() {
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
     if (currentCustomer) router.replace('/customer-dashboard');
   }, [currentCustomer]);
 
   async function handleLogin() {
+    setErrorMsg('');
     if (!email.trim() || !password) {
-      Alert.alert('Required', 'Please enter your email and password');
+      setErrorMsg('Please enter your email and password.');
       return;
     }
     setLoading(true);
@@ -32,10 +34,10 @@ export default function CustomerLoginScreen() {
       if (ok) {
         router.replace('/customer-dashboard');
       } else {
-        Alert.alert('Login Failed', 'Email or password is incorrect. Please try again.');
+        setErrorMsg('Email or password is incorrect. Please try again.');
       }
-    } catch {
-      Alert.alert('Error', 'Could not connect. Check your internet connection.');
+    } catch (e: any) {
+      setErrorMsg(e?.message ?? 'Could not connect. Check your internet connection.');
     } finally {
       setLoading(false);
     }
@@ -95,6 +97,13 @@ export default function CustomerLoginScreen() {
               <Ionicons name={showPw ? 'eye-off' : 'eye'} size={18} color={Colors.textLight} />
             </TouchableOpacity>
           </View>
+
+          {errorMsg ? (
+            <View style={styles.errorBox}>
+              <Ionicons name="alert-circle" size={16} color={Colors.danger} />
+              <Text style={styles.errorText}>{errorMsg}</Text>
+            </View>
+          ) : null}
 
           <TouchableOpacity
             style={[styles.loginBtn, loading && { opacity: 0.6 }]}
@@ -174,6 +183,13 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgLight, marginBottom: 20, overflow: 'hidden',
   },
   pwEye: { paddingHorizontal: 12 },
+  errorBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.dangerLight, borderRadius: 10,
+    padding: 12, marginBottom: 12,
+  },
+  errorText: { flex: 1, fontSize: 13, color: Colors.danger, lineHeight: 18 },
+
   loginBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, backgroundColor: Colors.primary, borderRadius: 12, paddingVertical: 15,

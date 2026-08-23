@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Platform,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -62,6 +62,7 @@ export default function CustomerRegisterScreen() {
   const [showPw, setShowPw] = useState(false);
   const [selectedCats, setSelectedCats] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const lgaOptions = getLgasByState(state).map(l => ({ label: l, value: l }));
   const nigeriaStates = (STATES['Nigeria'] ?? []).map(s => ({ label: s, value: s }));
@@ -71,10 +72,11 @@ export default function CustomerRegisterScreen() {
   }
 
   async function handleRegister() {
-    if (!fullName.trim()) { Alert.alert('Required', 'Please enter your full name'); return; }
-    if (!email.trim()) { Alert.alert('Required', 'Please enter your email address'); return; }
-    if (!password || password.length < 6) { Alert.alert('Required', 'Password must be at least 6 characters'); return; }
-    if (password !== confirmPw) { Alert.alert('Mismatch', 'Passwords do not match'); return; }
+    setErrorMsg('');
+    if (!fullName.trim()) { setErrorMsg('Please enter your full name.'); return; }
+    if (!email.trim()) { setErrorMsg('Please enter your email address.'); return; }
+    if (!password || password.length < 6) { setErrorMsg('Password must be at least 6 characters.'); return; }
+    if (password !== confirmPw) { setErrorMsg('Passwords do not match.'); return; }
 
     setSubmitting(true);
     try {
@@ -88,14 +90,12 @@ export default function CustomerRegisterScreen() {
         password,
       });
       if (ok) {
-        Alert.alert('Welcome to CityHup!', `Your account has been created, ${fullName.split(' ')[0]}. You can now find service providers in your area.`, [
-          { text: 'Find Services', onPress: () => router.replace('/customer-dashboard') },
-        ]);
+        router.replace('/customer-dashboard' as any);
       } else {
-        Alert.alert('Registration Failed', 'This email may already be registered. Try logging in instead.');
+        setErrorMsg('This email may already be registered. Try signing in instead.');
       }
-    } catch {
-      Alert.alert('Error', 'Could not create account. Please check your internet connection.');
+    } catch (e: any) {
+      setErrorMsg(e?.message ?? 'Could not create account. Please check your connection.');
     } finally {
       setSubmitting(false);
     }
@@ -196,6 +196,13 @@ export default function CustomerRegisterScreen() {
 
           <Text style={[styles.label, { marginTop: 12 }]}>Confirm Password <Text style={{ color: Colors.danger }}>*</Text></Text>
           <TextInput style={styles.input} value={confirmPw} onChangeText={setConfirmPw} placeholder="Re-enter password" placeholderTextColor={Colors.textMuted} secureTextEntry={!showPw} />
+
+          {errorMsg ? (
+            <View style={styles.errorBox}>
+              <Ionicons name="alert-circle" size={16} color={Colors.danger} />
+              <Text style={styles.errorText}>{errorMsg}</Text>
+            </View>
+          ) : null}
 
           <TouchableOpacity
             style={[styles.submitBtn, submitting && { opacity: 0.6 }]}
@@ -302,10 +309,17 @@ const styles = StyleSheet.create({
   },
   pwEye: { paddingHorizontal: 12 },
 
+  errorBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.dangerLight, borderRadius: 10,
+    padding: 12, marginTop: 12,
+  },
+  errorText: { flex: 1, fontSize: 13, color: Colors.danger, lineHeight: 18 },
+
   submitBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, backgroundColor: Colors.primary, borderRadius: 12,
-    paddingVertical: 15, marginTop: 20,
+    paddingVertical: 15, marginTop: 12,
   },
   submitBtnText: { color: Colors.white, fontWeight: '800', fontSize: 15 },
   termsNote: { fontSize: 12, color: Colors.textLight, textAlign: 'center', marginTop: 12, lineHeight: 18 },
