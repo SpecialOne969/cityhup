@@ -61,6 +61,12 @@ interface AppState {
   incrementTraffic: () => void;
 }
 
+async function hashPassword(password: string): Promise<string> {
+  const data = new TextEncoder().encode(password);
+  const hashBuf = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
   currentAdmin: null,
 
@@ -102,24 +108,29 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   restoreSession: async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      await get().loadClients();
-      return;
+    // Restore customer session from localStorage (no Supabase Auth for customers)
+    if (typeof localStorage !== 'undefined') {
+      const savedId = localStorage.getItem('ch_customer_id');
+      if (savedId) {
+        const { data: customerRow } = await supabase
+          .from('customers').select('*').eq('id', savedId).maybeSingle();
+        if (customerRow) {
+          set({ currentCustomer: dbToCustomer(customerRow) });
+        } else {
+          localStorage.removeItem('ch_customer_id');
+        }
+      }
     }
-    const { data: adminRow } = await supabase
-      .from('admins').select('*').eq('id', session.user.id).maybeSingle();
 
-    if (adminRow) {
-      set({ currentAdmin: dbToAdmin(adminRow) });
-      await get().loadComplaints();
-    } else {
-      const { data: customerRow } = await supabase
-        .from('customers').select('*').eq('id', session.user.id).maybeSingle();
-      if (customerRow) {
-        set({ currentCustomer: dbToCustomer(customerRow) });
+    // Restore admin / client session from Supabase Auth
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      const { data: adminRow } = await supabase
+        .from('admins').select('*').eq('id', session.user.id).maybeSingle();
+      if (adminRow) {
+        set({ currentAdmin: dbToAdmin(adminRow) });
+        await get().loadComplaints();
       } else {
-        // Check client portal
         const email = session.user.email;
         if (email) {
           const { data: clientRow } = await supabase
@@ -128,6 +139,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
       }
     }
+
     await get().loadClients();
   },
 
@@ -179,34 +191,49 @@ export const useAppStore = create<AppState>((set, get) => ({
   currentCustomer: null,
 
   customerLogin: async (email, password) => {
-    const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error || !authData.user) return false;
-    const { data: row } = await supabase.from('customers').select('*').eq('id', authData.user.id).single();
-    if (!row) { await supabase.auth.signOut(); return false; }
-    set({ currentCustomer: dbToCustomer(row) });
+    const { data: row } = await supabase
+      .from('customers').select('*').eq('email', email.toLowerCase()).maybeSingle();
+    if (!row) return false;
+    const hash = await hashPassword(password);
+    if (row.password_hash !== hash) return false;
+    const customer = dbToCustomer(row);
+    set({ currentCustomer: customer });
+    if (typeof localStorage !== 'undefined') localStorage.setItem('ch_customer_id', row.id);
     return true;
   },
 
   customerLogout: async () => {
-    await supabase.auth.signOut();
     set({ currentCustomer: null });
+    if (typeof localStorage !== 'undefined') localStorage.removeItem('ch_customer_id');
   },
 
   registerCustomer: async ({ fullName, email, phone, state, lga, interestedCategories, password }) => {
-    const { data: authData, error } = await supabase.auth.signUp({ email, password });
-    if (error || !authData.user) return false;
-    const { error: insertError } = await supabase.from('customers').insert({
-      id: authData.user.id,
+    const normalizedEmail = email.trim().toLowerCase();
+    const { data: existing } = await supabase
+      .from('customers').select('id').eq('email', normalizedEmail).maybeSingle();
+    if (existing) return false;
+
+    const id = crypto.randomUUID();
+    const passwordHash = await hashPassword(password);
+
+    const { error } = await supabase.from('customers').insert({
+      id,
       full_name: fullName,
-      email,
+      email: normalizedEmail,
       phone: phone ?? null,
       state: state ?? null,
       lga: lga ?? null,
       interested_categories: interestedCategories,
+      registered_at: new Date().toISOString(),
+      password_hash: passwordHash,
     });
-    if (insertError) return false;
-    const { data: row } = await supabase.from('customers').select('*').eq('id', authData.user.id).single();
-    if (row) set({ currentCustomer: dbToCustomer(row) });
+    if (error) return false;
+
+    const { data: row } = await supabase.from('customers').select('*').eq('id', id).single();
+    if (row) {
+      set({ currentCustomer: dbToCustomer(row) });
+      if (typeof localStorage !== 'undefined') localStorage.setItem('ch_customer_id', id);
+    }
     return true;
   },
 
