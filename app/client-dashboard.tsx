@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Platform, Image,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -53,14 +53,9 @@ export default function ClientDashboard() {
 
   const status = STATUS_CONFIG[currentClient.status];
 
-  function handleLogout() {
-    Alert.alert('Logout', 'Log out of your business portal?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: async () => {
-        await clientLogout();
-        router.replace('/');
-      }},
-    ]);
+  async function handleLogout() {
+    await clientLogout();
+    router.replace('/');
   }
 
   async function handleSave() {

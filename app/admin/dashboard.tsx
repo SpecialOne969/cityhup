@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, Alert, Platform,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,11 +37,9 @@ export default function AdminDashboard() {
     tab === 'suspended' ? suspended :
     tab === 'rejected' ? rejected : [];
 
-  function handleLogout() {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: () => { logout().then(() => router.replace('/')); } },
-    ]);
+  async function handleLogout() {
+    await logout();
+    router.replace('/');
   }
 
   const tabDef: { key: TabKey; label: string; count: number; color: string }[] = [

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, Platform, Alert,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,11 +32,9 @@ export default function CustomerDashboardScreen() {
     ? approved.filter(c => c.categories.some(cat => currentCustomer.interestedCategories.includes(cat)))
     : [];
 
-  function handleLogout() {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: () => customerLogout().then(() => router.replace('/')) },
-    ]);
+  async function handleLogout() {
+    await customerLogout();
+    router.replace('/');
   }
 
   const firstName = currentCustomer.fullName.split(' ')[0];
