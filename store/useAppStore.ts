@@ -53,6 +53,7 @@ interface AppState {
   complaints: Complaint[];
   loadComplaints: () => Promise<void>;
   addComplaint: (data: Omit<Complaint, 'id' | 'status' | 'createdAt'>) => Promise<void>;
+  resolveComplaint: (id: string, status: 'reviewed' | 'resolved') => Promise<void>;
 
   reviews: Record<string, Review[]>;
   loadReviews: (clientId: string) => Promise<void>;
@@ -456,6 +457,16 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     const complaint = dbToComplaint(inserted);
     set(state => ({ complaints: [complaint, ...state.complaints] }));
+  },
+
+  resolveComplaint: async (id, status) => {
+    const { data } = await supabase
+      .from('complaints')
+      .update({ status, reviewed_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    if (data) set(state => ({ complaints: state.complaints.map(c => c.id === id ? dbToComplaint(data) : c) }));
   },
 
   reviews: {},
