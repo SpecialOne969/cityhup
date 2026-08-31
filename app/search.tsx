@@ -21,7 +21,7 @@ const SORT_LABELS: Record<SortOption, string> = {
 };
 
 export default function SearchScreen() {
-  const params = useLocalSearchParams<{ q?: string; category?: string; country?: string }>();
+  const params = useLocalSearchParams<{ q?: string; category?: string; country?: string; section?: string }>();
   const router = useRouter();
 
   const [query, setQuery] = useState(params.q ?? '');
@@ -29,6 +29,9 @@ export default function SearchScreen() {
   const [stateFilter, setStateFilter] = useState('');
   const [lgaFilter, setLgaFilter] = useState('');
   const [catFilter, setCatFilter] = useState(params.category ?? '');
+  const [sectionFilter] = useState<'services' | 'goods' | ''>(
+    (params.section === 'services' || params.section === 'goods') ? params.section : ''
+  );
   const [sortBy, setSortBy] = useState<SortOption>('best');
   const [showFilters, setShowFilters] = useState(false);
   const [showSort, setShowSort] = useState(false);
@@ -44,16 +47,21 @@ export default function SearchScreen() {
     const state = overrides?.state ?? stateFilter;
     const lga = overrides?.lga ?? lgaFilter;
     const category = overrides?.category ?? catFilter;
-    setSearchFilters({ query: q, country, state, lga, category });
+    setSearchFilters({ query: q, country, state, lga, category, section: sectionFilter || undefined });
     runSearch();
-  }, [query, countryFilter, stateFilter, lgaFilter, catFilter]);
+  }, [query, countryFilter, stateFilter, lgaFilter, catFilter, sectionFilter]);
 
   // Initial load / param changes
   useEffect(() => {
     setQuery(params.q ?? '');
     setCatFilter(params.category ?? '');
     setCountryFilter(params.country ?? '');
-    setSearchFilters({ query: params.q ?? '', category: params.category ?? '', country: params.country ?? '' });
+    setSearchFilters({
+      query: params.q ?? '',
+      category: params.category ?? '',
+      country: params.country ?? '',
+      section: sectionFilter || undefined,
+    });
     runSearch();
   }, [params.q, params.category, params.country]);
 
@@ -64,7 +72,7 @@ export default function SearchScreen() {
   }, [countryFilter, stateFilter, lgaFilter, catFilter]);
 
   const approved = clients.filter(c => c.status === 'approved');
-  const hasActiveFilter = query || catFilter || stateFilter || countryFilter || lgaFilter;
+  const hasActiveFilter = query || catFilter || stateFilter || countryFilter || lgaFilter || sectionFilter;
   const baseResults = hasActiveFilter ? searchResults : approved;
 
   const results = [...baseResults].sort((a, b) => {

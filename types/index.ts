@@ -146,6 +146,7 @@ export interface SearchFilters {
   lga?: string;
   city?: string;
   category?: string;
+  section?: 'services' | 'goods';
   type?: ClientType;
 }
 

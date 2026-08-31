@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Client, Admin, Customer, Complaint, SearchFilters, Ad, Review } from '../types';
 import { generateClientCode } from '../constants/locations';
+import { CATEGORIES } from '../constants/categories';
 import { supabase, dbToClient, clientToDb, dbToAdmin, dbToCustomer, dbToComplaint, dbToAd, dbToReview } from '../lib/supabase';
 
 interface AppState {
@@ -401,8 +402,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   runSearch: () => {
     const { clients, searchFilters } = get();
     const approved = clients.filter(c => c.status === 'approved' && !c.isIndebted);
-    const { query, country, state, lga, city, category } = searchFilters;
+    const { query, country, state, lga, city, category, section } = searchFilters;
     const q = query.toLowerCase();
+    const sectionIds = section
+      ? new Set(CATEGORIES.filter(cat => cat.section === section).map(cat => cat.id))
+      : null;
     const results = approved.filter(c => {
       const matchQuery =
         !q ||
@@ -416,7 +420,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       const matchLga = !lga || c.lga === lga;
       const matchCity = !city || c.city.toLowerCase().includes(city.toLowerCase());
       const matchCategory = !category || c.categories.includes(category);
-      return matchQuery && matchCountry && matchState && matchLga && matchCity && matchCategory;
+      const matchSection = !sectionIds || c.categories.some(id => sectionIds.has(id));
+      return matchQuery && matchCountry && matchState && matchLga && matchCity && matchCategory && matchSection;
     });
     // Premium clients always appear first
     results.sort((a, b) => (b.isPremium ? 1 : 0) - (a.isPremium ? 1 : 0));

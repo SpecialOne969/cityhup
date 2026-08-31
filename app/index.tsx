@@ -1,59 +1,25 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  FlatList, Dimensions, Linking,
+  Dimensions, Linking, Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
-import { CATEGORIES, QUICK_CATEGORIES, SERVICE_CATEGORIES, GOODS_CATEGORIES } from '../constants/categories';
+import { CATEGORIES, SERVICE_CATEGORIES, GOODS_CATEGORIES } from '../constants/categories';
 import { useAppStore } from '../store/useAppStore';
 import Header from '../components/Header';
 import AdBanner from '../components/AdBanner';
 import ListingCard from '../components/ListingCard';
-import CategoryCard from '../components/CategoryCard';
 import ChatBox from '../components/ChatBox';
 import ThemeSwitcher from '../components/ThemeSwitcher';
 
-const { width } = Dimensions.get('window');
-
+const FOREST_GREEN = '#008751';
 const COUNTRY_CONFIG = [
-  {
-    name: 'Nigeria',
-    flag: '🇳🇬',
-    capital: 'Abuja',
-    currency: 'NGN ₦',
-    color: '#008751',
-    bg: '#E8F5E9',
-    desc: 'West Africa\'s largest economy',
-  },
-  {
-    name: 'Ghana',
-    flag: '🇬🇭',
-    capital: 'Accra',
-    currency: 'GHS ₵',
-    color: '#006B3F',
-    bg: '#FFF8E1',
-    desc: 'Gateway to West Africa',
-  },
-  {
-    name: 'Benin Republic',
-    flag: '🇧🇯',
-    capital: 'Cotonou',
-    currency: 'XOF CFA',
-    color: '#008751',
-    bg: '#FFF3E0',
-    desc: 'Birthplace of Voodoo culture',
-  },
-  {
-    name: 'Liberia',
-    flag: '🇱🇷',
-    capital: 'Monrovia',
-    currency: 'LRD $',
-    color: '#BF0A30',
-    bg: '#FFEBEE',
-    desc: 'Africa\'s oldest republic',
-  },
+  { name: 'Nigeria',        flag: '🇳🇬', capital: 'Abuja',    currency: 'NGN ₦',   desc: "West Africa's largest economy" },
+  { name: 'Ghana',          flag: '🇬🇭', capital: 'Accra',    currency: 'GHS ₵',   desc: 'Gateway to West Africa' },
+  { name: 'Benin Republic', flag: '🇧🇯', capital: 'Cotonou',  currency: 'XOF CFA', desc: 'Heart of West African culture' },
+  { name: 'Liberia',        flag: '🇱🇷', capital: 'Monrovia', currency: 'LRD $',   desc: "Africa's oldest republic" },
 ];
 
 export default function HomeScreen() {
@@ -61,22 +27,69 @@ export default function HomeScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const clients = useAppStore(s => s.clients);
   const approvedClients = clients.filter(c => c.status === 'approved');
+  const [infoVisible, setInfoVisible] = useState(false);
+
+  useEffect(() => {
+    if (typeof localStorage !== 'undefined' && !localStorage.getItem('ch_info_seen')) {
+      setInfoVisible(true);
+    }
+  }, []);
+
+  function dismissInfo() {
+    if (typeof localStorage !== 'undefined') localStorage.setItem('ch_info_seen', '1');
+    setInfoVisible(false);
+  }
 
   const featuredListings = approvedClients.slice(0, 4);
-
-  function countForCategory(catId: string) {
-    return clients.filter(c => c.status === 'approved' && c.categories.includes(catId)).length;
-  }
 
   function countForCountry(country: string) {
     return approvedClients.filter(c => c.country === country).length;
   }
 
-  const quickCats = QUICK_CATEGORIES.map(id => CATEGORIES.find(c => c.id === id)).filter(Boolean) as typeof CATEGORIES;
-
   return (
     <View style={styles.root}>
       <Header />
+
+      {/* Important Information Modal */}
+      <Modal visible={infoVisible} transparent animationType="fade" onRequestClose={dismissInfo}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.infoModal}>
+            <View style={styles.infoModalHeader}>
+              <Ionicons name="information-circle" size={28} color={FOREST_GREEN} />
+              <Text style={styles.infoModalTitle}>Important Information</Text>
+            </View>
+            <ScrollView style={styles.infoModalBody} showsVerticalScrollIndicator={false}>
+              <Text style={styles.infoItem}>
+                <Text style={styles.infoLabel}>🟢 Free to Search:</Text>
+                {' '}Browsing and contacting service providers on CityHup is completely free for everyone.
+              </Text>
+              <Text style={styles.infoItem}>
+                <Text style={styles.infoLabel}>✅ Verified Listings:</Text>
+                {' '}All business listings are manually verified by City Hup agents before going live.
+              </Text>
+              <Text style={styles.infoItem}>
+                <Text style={styles.infoLabel}>📍 West Africa Coverage:</Text>
+                {' '}We currently serve Nigeria, Ghana, Benin Republic, and Liberia with more countries coming soon.
+              </Text>
+              <Text style={styles.infoItem}>
+                <Text style={styles.infoLabel}>🏢 List Your Business:</Text>
+                {' '}Businesses can register by tapping "List Business" in the top menu. Listing requires a one-time fee.
+              </Text>
+              <Text style={styles.infoItem}>
+                <Text style={styles.infoLabel}>⚠️ Disclaimer:</Text>
+                {' '}CityHup is a directory platform. We do not guarantee the quality of listed providers. Always verify before making payments.
+              </Text>
+              <Text style={styles.infoItem}>
+                <Text style={styles.infoLabel}>📞 Support:</Text>
+                {' '}Contact us via WhatsApp or visit any CityHup agent office near you.
+              </Text>
+            </ScrollView>
+            <TouchableOpacity style={styles.infoModalBtn} onPress={dismissInfo}>
+              <Text style={styles.infoModalBtnText}>I Understand — Continue</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
       <ScrollView ref={scrollRef} style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90 }}>
         {/* Hero */}
         <View style={styles.hero}>
@@ -129,11 +142,11 @@ export default function HomeScreen() {
               return (
                 <TouchableOpacity
                   key={country.name}
-                  style={[styles.countryCard, { borderColor: country.color }]}
+                  style={styles.countryCard}
                   onPress={() => router.push({ pathname: '/search', params: { country: country.name } })}
                   activeOpacity={0.85}
                 >
-                  <View style={[styles.countryFlagBox, { backgroundColor: country.bg }]}>
+                  <View style={styles.countryFlagBox}>
                     <Text style={styles.countryFlag}>{country.flag}</Text>
                   </View>
                   <View style={styles.countryInfo}>
@@ -145,11 +158,11 @@ export default function HomeScreen() {
                     <Text style={styles.countryDesc} numberOfLines={2}>{country.desc}</Text>
                   </View>
                   <View style={styles.countryRight}>
-                    <View style={[styles.countryCountBadge, { backgroundColor: country.color }]}>
+                    <View style={styles.countryCountBadge}>
                       <Text style={styles.countryCountNum}>{count}</Text>
                       <Text style={styles.countryCountLabel}>listings</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={16} color={country.color} style={{ marginTop: 8 }} />
+                    <Ionicons name="chevron-forward" size={16} color={FOREST_GREEN} style={{ marginTop: 8 }} />
                   </View>
                 </TouchableOpacity>
               );
@@ -157,33 +170,11 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Quick Category Grid */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Browse by Category</Text>
-            <TouchableOpacity onPress={() => router.push('/browse')}>
-              <Text style={styles.seeAll}>See all</Text>
-            </TouchableOpacity>
-          </View>
-          <FlatList
-            data={quickCats}
-            keyExtractor={c => c.id}
-            numColumns={4}
-            scrollEnabled={false}
-            renderItem={({ item }) => (
-              <View style={{ flex: 1, maxWidth: '25%' }}>
-                <CategoryCard category={item} size="small" count={countForCategory(item.id)} />
-              </View>
-            )}
-            columnWrapperStyle={{ justifyContent: 'flex-start' }}
-          />
-        </View>
-
         {/* Service Providers Section */}
         <View style={[styles.section, styles.sectionDark]}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Service Providers</Text>
-            <TouchableOpacity onPress={() => router.push({ pathname: '/search', params: { section: 'services' } })}>
+            <TouchableOpacity onPress={() => router.push({ pathname: '/search', params: { section: 'services' } } as any)}>
               <Text style={styles.seeAll}>View all</Text>
             </TouchableOpacity>
           </View>
@@ -207,7 +198,7 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Goods & Services</Text>
-            <TouchableOpacity onPress={() => router.push({ pathname: '/search', params: { section: 'goods' } })}>
+            <TouchableOpacity onPress={() => router.push({ pathname: '/search', params: { section: 'goods' } } as any)}>
               <Text style={styles.seeAll}>View all</Text>
             </TouchableOpacity>
           </View>
@@ -370,6 +361,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgCard,
     borderRadius: 14,
     borderWidth: 1.5,
+    borderColor: FOREST_GREEN,
     overflow: 'hidden',
   },
   countryFlagBox: {
@@ -378,27 +370,65 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
+    backgroundColor: '#E8F5E9',
   },
   countryFlag: { fontSize: 36, lineHeight: 42 },
   countryInfo: { flex: 1, paddingVertical: 12, paddingHorizontal: 10, gap: 2 },
   countryName: { fontSize: 15, fontWeight: '800', color: Colors.textDark },
   countryCapital: { fontSize: 11, color: Colors.textLight, marginTop: 1 },
-  countryCurrency: { fontSize: 11, color: Colors.textMedium, fontWeight: '600' },
+  countryCurrency: { fontSize: 11, color: FOREST_GREEN, fontWeight: '700' },
   countryDesc: { fontSize: 11, color: Colors.textLight, marginTop: 3, lineHeight: 15 },
-  countryRight: {
-    alignItems: 'center',
-    paddingRight: 12,
-    paddingVertical: 12,
-  },
+  countryRight: { alignItems: 'center', paddingRight: 12, paddingVertical: 12 },
   countryCountBadge: {
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 5,
     alignItems: 'center',
     minWidth: 52,
+    backgroundColor: FOREST_GREEN,
   },
   countryCountNum: { fontSize: 17, fontWeight: '900', color: Colors.white },
   countryCountLabel: { fontSize: 9, color: 'rgba(255,255,255,0.85)', fontWeight: '600', textTransform: 'uppercase' },
+
+  // Info modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  infoModal: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: 20,
+    width: '100%',
+    maxWidth: 480,
+    overflow: 'hidden',
+    borderTopWidth: 4,
+    borderTopColor: FOREST_GREEN,
+    maxHeight: '85%',
+  },
+  infoModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 20,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  infoModalTitle: { fontSize: 17, fontWeight: '800', color: Colors.textDark },
+  infoModalBody: { padding: 20, maxHeight: 360 },
+  infoItem: { fontSize: 13, color: Colors.textMedium, lineHeight: 20, marginBottom: 14 },
+  infoLabel: { fontWeight: '700', color: Colors.textDark },
+  infoModalBtn: {
+    backgroundColor: FOREST_GREEN,
+    margin: 16,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  infoModalBtnText: { color: Colors.white, fontWeight: '800', fontSize: 15 },
 
   // Sections
   section: { padding: 16, marginBottom: 4 },

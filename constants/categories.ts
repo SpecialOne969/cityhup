@@ -98,20 +98,6 @@ export const CATEGORIES: Category[] = [
     ],
   },
   {
-    id: 'truck-spare-parts',
-    label: 'Truck Spare Parts',
-    icon: 'truck',
-    color: '#4E342E',
-    section: 'services',
-    subcategories: [
-      { id: 'truck-tyre-new', label: 'Tyre – Brand New' },
-      { id: 'truck-tyre-tokunbo', label: 'Tyre – Tokunbo' },
-      { id: 'truck-battery', label: 'Battery' },
-      { id: 'mac-spare', label: 'Mac Spare Parts (Select Make)' },
-      { id: 'truck-etc', label: 'Other Truck Parts' },
-    ],
-  },
-  {
     id: 'property-agent',
     label: 'House / Property Agent',
     icon: 'business',
