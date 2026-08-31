@@ -75,7 +75,7 @@ export default function DisclaimerScreen() {
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>© 2026 City Hup Ltd. All rights reserved.</Text>
-            <Text style={styles.footerText}>Port Harcourt, Rivers State, Nigeria.</Text>
+            <Text style={styles.footerText}>Lagos, Lagos State, Nigeria.</Text>
             <Text style={styles.footerText}>Last updated: July 2026</Text>
           </View>
         </View>

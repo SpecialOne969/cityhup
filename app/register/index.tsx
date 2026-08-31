@@ -85,8 +85,10 @@ export default function RegisterScreen() {
   const [step, setStep] = useState(0);
   const uploadFolder = useRef(`reg-${Date.now()}-${Math.random().toString(36).slice(2)}`).current;
 
-  // Image states — local URIs until submit
+  // Image/document states — local URIs until submit
   const [businessPictures, setBusinessPictures] = useState<string[]>([]);
+  const [profileImages, setProfileImages] = useState<string[]>([]);
+  const [portfolioImages, setPortfolioImages] = useState<string[]>([]);
   const [idDocImage, setIdDocImage] = useState<string[]>([]);
   const [paymentProof, setPaymentProof] = useState<string[]>([]);
 
@@ -122,10 +124,14 @@ export default function RegisterScreen() {
   // Categories
   const [selectedCats, setSelectedCats] = useState<string[]>([]);
 
-  // Property / Rental pricing
-  const [priceMin, setPriceMin] = useState('');
-  const [priceMax, setPriceMax] = useState('');
-  const [priceUnit, setPriceUnit] = useState('');
+  // Property listings — multiple entries
+  const [propertyListings, setPropertyListings] = useState<Array<{
+    type: string; minPrice: string; maxPrice: string; unit: string;
+  }>>([]);
+  const [newPropType, setNewPropType] = useState('');
+  const [newPropMin, setNewPropMin] = useState('');
+  const [newPropMax, setNewPropMax] = useState('');
+  const [newPropUnit, setNewPropUnit] = useState('per year');
 
   // Shelf items
   const [shelfItems, setShelfItems] = useState<Array<{ name: string; price: string; description: string; isOffer: boolean }>>([]);
@@ -152,6 +158,17 @@ export default function RegisterScreen() {
     setNewItemName(''); setNewItemPrice(''); setNewItemDesc(''); setNewItemOffer(false);
   }
 
+  function addPropertyListing() {
+    if (!newPropType.trim() || !newPropMin.trim()) return;
+    setPropertyListings(prev => [...prev, {
+      type: newPropType.trim(),
+      minPrice: newPropMin.trim(),
+      maxPrice: newPropMax.trim(),
+      unit: newPropUnit,
+    }]);
+    setNewPropType(''); setNewPropMin(''); setNewPropMax(''); setNewPropUnit('per year');
+  }
+
   // Payment
   const [paymentBand, setPaymentBand] = useState(2000);
   const [duration, setDuration] = useState(1);
@@ -176,7 +193,23 @@ export default function RegisterScreen() {
     }
     if (step === 1) {
       if (!businessName || !address || !email || !phone || !busStop || !landmark || !competence || !profile) {
-        Alert.alert('Required fields', 'Please fill all required fields');
+        Alert.alert('Required fields', 'Please fill all required fields marked with *');
+        return false;
+      }
+      // Phone number validation — 7 to 15 digits, optional leading +
+      const cleanPhone = phone.replace(/[\s\-()]/g, '');
+      if (!/^\+?\d{7,15}$/.test(cleanPhone)) {
+        Alert.alert('Invalid phone', 'Please enter a valid phone number (7–15 digits).');
+        return false;
+      }
+      if (clientType === 'corporate' && !cacNumber.trim()) {
+        Alert.alert('CAC required', 'CAC Registration Number is required for corporate clients.');
+        return false;
+      }
+    }
+    if (step === 2) {
+      if (!director.trim()) {
+        Alert.alert('Required', 'Director / Person of Responsibility is required.');
         return false;
       }
     }
@@ -192,7 +225,7 @@ export default function RegisterScreen() {
         return false;
       }
       if (!agentCode) {
-        Alert.alert('Agent Code required', 'Enter your assigned agent code to submit');
+        Alert.alert('Agent Code required', 'Enter your assigned City Hup agent code to submit');
         return false;
       }
       if (clientPassword && clientPassword !== clientPasswordConfirm) {
@@ -222,6 +255,8 @@ export default function RegisterScreen() {
     try {
       setSubmitStatus('Uploading photos…');
       const uploadedPictures = await uploadImages(businessPictures, 'client-pictures', uploadFolder);
+      const uploadedProfileImgs = await uploadImages(profileImages, 'client-docs', `${uploadFolder}/profile`);
+      const uploadedPortfolioImgs = await uploadImages(portfolioImages, 'client-docs', `${uploadFolder}/portfolio`);
 
       let uploadedIdImage: string | undefined;
       if (idDocImage.length > 0 && !idDocImage[0].startsWith('http')) {
@@ -259,7 +294,7 @@ export default function RegisterScreen() {
         cacNumber,
         profile,
         info,
-        infoImages: [],
+        infoImages: [...uploadedProfileImgs, ...uploadedPortfolioImgs],
         websiteLink,
         referral,
         director,
@@ -273,16 +308,27 @@ export default function RegisterScreen() {
         acceptedTerms,
         registeredBy: agentCode,
         categories: selectedCats,
-        shelfItems: shelfItems.map((item, i) => ({
-          id: `item-${Date.now()}-${i}`,
-          name: item.name,
-          price: Number(item.price),
-          description: item.description || undefined,
-          isOffer: item.isOffer,
-        })),
-        priceMin: priceMin ? Number(priceMin) : undefined,
-        priceMax: priceMax ? Number(priceMax) : undefined,
-        priceUnit: priceUnit || undefined,
+        shelfItems: [
+          ...shelfItems.map((item, i) => ({
+            id: `item-${Date.now()}-${i}`,
+            name: item.name,
+            price: Number(item.price),
+            description: item.description || undefined,
+            isOffer: item.isOffer,
+          })),
+          ...propertyListings.map((p, i) => ({
+            id: `prop-${Date.now()}-${i}`,
+            name: p.type,
+            price: Number(p.minPrice),
+            description: `₦${Number(p.minPrice).toLocaleString()}${p.maxPrice ? ' – ₦' + Number(p.maxPrice).toLocaleString() : ''} ${p.unit}`,
+            isOffer: false,
+          })),
+        ],
+        priceMin: propertyListings.length > 0 ? Number(propertyListings[0].minPrice) : undefined,
+        priceMax: propertyListings.length > 0
+          ? Math.max(...propertyListings.map(p => Number(p.maxPrice || p.minPrice)))
+          : undefined,
+        priceUnit: propertyListings[0]?.unit || undefined,
       });
 
       // Set up client portal login if password was provided
@@ -433,15 +479,31 @@ export default function RegisterScreen() {
                 <Input value={competence} onChangeText={setCompetence} placeholder="What you do best…" multiline numberOfLines={2} />
               </FieldRow>
               {clientType === 'corporate' && (
-                <FieldRow label="CAC Registration Number">
+                <FieldRow label="CAC Registration Number" required>
                   <Input value={cacNumber} onChangeText={setCacNumber} placeholder="RC-XXXXXXX" />
                 </FieldRow>
               )}
               <FieldRow label="Profile / About" required>
                 <Input value={profile} onChangeText={setProfile} placeholder="Brief description of the business…" multiline numberOfLines={4} />
+                <Text style={styles.fieldSubNote}>You may also attach supporting images or documents below:</Text>
+                <ImageUploader
+                  images={profileImages}
+                  onChange={setProfileImages}
+                  maxImages={3}
+                  uploading={submitting}
+                  note="Optional: attach photos or scanned documents (PDF not yet supported — screenshots accepted)."
+                />
               </FieldRow>
               <FieldRow label="Additional Info / Portfolio">
                 <Input value={info} onChangeText={setInfo} placeholder="Additional competence, notable works, contracts executed…" multiline numberOfLines={4} />
+                <Text style={styles.fieldSubNote}>You may also attach portfolio images or work samples:</Text>
+                <ImageUploader
+                  images={portfolioImages}
+                  onChange={setPortfolioImages}
+                  maxImages={5}
+                  uploading={submitting}
+                  note="Optional: attach photos of past projects, completed works, or certifications."
+                />
               </FieldRow>
 
               <FieldRow label="Business Photos">
@@ -450,7 +512,7 @@ export default function RegisterScreen() {
                   onChange={setBusinessPictures}
                   maxImages={5}
                   uploading={submitting}
-                  note="Add up to 5 photos of the business premises, products, or work samples."
+                  note="Add up to 5 photos of the business premises, products, or work samples. Photos only — videos and PDFs are not currently supported."
                 />
               </FieldRow>
             </>
@@ -467,7 +529,7 @@ export default function RegisterScreen() {
               <FieldRow label="Referral / Guarantor">
                 <Input value={referral} onChangeText={setReferral} placeholder="Who referred this client?" />
               </FieldRow>
-              <FieldRow label="Director / Person of Responsibility">
+              <FieldRow label="Director / Person of Responsibility" required>
                 <Input value={director} onChangeText={setDirector} placeholder="Full name of director or responsible person" />
               </FieldRow>
               <FieldRow label="Means of Identification">
@@ -581,20 +643,20 @@ export default function RegisterScreen() {
               {isPropertyClient && (
                 <View style={styles.priceBand}>
                   <Text style={styles.priceBandTitle}>
-                    <Ionicons name="home-outline" size={14} color={Colors.primary} /> Property / Rental Pricing
+                    <Ionicons name="home-outline" size={14} color={Colors.primary} /> Property / Rental Listings
                   </Text>
-                  <Text style={styles.priceBandSub}>Enter the price range this provider offers (optional but recommended)</Text>
+                  <Text style={styles.priceBandSub}>Add each property type with its price range. You can add multiple listings.</Text>
+                  <Input value={newPropType} onChangeText={setNewPropType} placeholder="Property type (e.g. 3 Bedroom Duplex, Shop, Land)" />
                   <View style={styles.priceRow}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.fieldLabel}>Min Price (₦)</Text>
-                      <Input value={priceMin} onChangeText={setPriceMin} placeholder="e.g. 500000" keyboardType="numeric" />
+                      <Input value={newPropMin} onChangeText={setNewPropMin} placeholder="e.g. 500000" keyboardType="numeric" />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.fieldLabel}>Max Price (₦)</Text>
-                      <Input value={priceMax} onChangeText={setPriceMax} placeholder="e.g. 5000000" keyboardType="numeric" />
+                      <Input value={newPropMax} onChangeText={setNewPropMax} placeholder="e.g. 5000000" keyboardType="numeric" />
                     </View>
                   </View>
-                  <Text style={styles.fieldLabel}>Price Unit / Period</Text>
                   <SelectPicker
                     options={[
                       { label: 'Per Year', value: 'per year' },
@@ -603,10 +665,27 @@ export default function RegisterScreen() {
                       { label: 'Per Room', value: 'per room' },
                       { label: 'Outright Sale', value: 'outright' },
                     ]}
-                    value={priceUnit}
-                    onChange={setPriceUnit}
+                    value={newPropUnit}
+                    onChange={setNewPropUnit}
                     placeholder="Select price period"
                   />
+                  <TouchableOpacity style={[styles.addItemBtn, { marginTop: 8, alignSelf: 'flex-end' }]} onPress={addPropertyListing}>
+                    <Ionicons name="add" size={16} color={Colors.white} />
+                    <Text style={styles.addItemBtnText}>Add Property</Text>
+                  </TouchableOpacity>
+                  {propertyListings.map((p, i) => (
+                    <View key={i} style={styles.shelfItemRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.shelfItemName}>{p.type}</Text>
+                        <Text style={styles.shelfItemDesc}>
+                          ₦{Number(p.minPrice).toLocaleString()}{p.maxPrice ? ' – ₦' + Number(p.maxPrice).toLocaleString() : ''} {p.unit}
+                        </Text>
+                      </View>
+                      <TouchableOpacity onPress={() => setPropertyListings(prev => prev.filter((_, j) => j !== i))}>
+                        <Ionicons name="close-circle-outline" size={20} color={Colors.danger} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
                 </View>
               )}
             </>
@@ -677,6 +756,7 @@ export default function RegisterScreen() {
 
               <FieldRow label="Agent / Staff Code" required>
                 <Input value={agentCode} onChangeText={setAgentCode} placeholder="Enter your assigned agent code" />
+                <Text style={styles.fieldSubNote}>This is your unique CityHup agent ID assigned to you by City Hup Ltd. Contact your supervisor if you do not have one.</Text>
               </FieldRow>
 
               <TouchableOpacity
@@ -863,4 +943,5 @@ const styles = StyleSheet.create({
     gap: 8, backgroundColor: Colors.success, borderRadius: 12, paddingVertical: 14,
   },
   submitBtnText: { color: Colors.white, fontWeight: '800', fontSize: 15 },
+  fieldSubNote: { fontSize: 11, color: Colors.textLight, marginTop: 4, lineHeight: 16, fontStyle: 'italic' },
 });

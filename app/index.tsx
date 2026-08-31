@@ -12,7 +12,6 @@ import Header from '../components/Header';
 import AdBanner from '../components/AdBanner';
 import ListingCard from '../components/ListingCard';
 import ChatBox from '../components/ChatBox';
-import ThemeSwitcher from '../components/ThemeSwitcher';
 
 const FOREST_GREEN = '#008751';
 const COUNTRY_CONFIG = [
@@ -95,7 +94,7 @@ export default function HomeScreen() {
         <View style={styles.hero}>
           <Text style={styles.heroTitle}>Locate Service Providers &</Text>
           <Text style={styles.heroTitle2}>Essential Goods in Your Neighborhood</Text>
-          <Text style={styles.heroSub}>West Africa's trusted local directory — find artisans, stores, schools, properties & more.</Text>
+          <Text style={styles.heroSub}>West Africa's trusted local directory — find professional skill workers / artisans, stores, goods, schools, properties & more.</Text>
           <View style={styles.heroCtas}>
             <TouchableOpacity style={styles.heroBtnPrimary} onPress={() => router.push('/browse')}>
               <Ionicons name="grid-outline" size={16} color={Colors.white} />
@@ -297,7 +296,6 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
       <ChatBox />
-      <ThemeSwitcher />
     </View>
   );
 }
