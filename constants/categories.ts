@@ -111,7 +111,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'computer-phone-repairs',
-    label: 'Computer / Phone Repairs',
+    label: 'Computer / Phone Sales',
     icon: 'phone-portrait',
     color: '#1976D2',
     section: 'services',
@@ -402,12 +402,11 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'computers',
-    label: 'Computer Repairs',
+    label: 'Computer Sales',
     icon: 'laptop',
     color: '#0D47A1',
     section: 'goods',
     subcategories: [
-      { id: 'computer-repairs',      label: 'Computer Repairs' },
       { id: 'comp-laptop',           label: 'Laptop' },
       { id: 'comp-desktop',          label: 'Desktop' },
       { id: 'comp-accessories',      label: 'Accessories / Disposables' },
@@ -416,12 +415,11 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'phones',
-    label: 'Phone Repairs',
+    label: 'Phone Sales',
     icon: 'phone-portrait',
     color: '#37474F',
     section: 'goods',
     subcategories: [
-      { id: 'phone-repairs',         label: 'Phone Repairs' },
       { id: 'phone-goods',           label: 'Phone' },
       { id: 'phone-accessories',     label: 'Accessories' },
     ],
