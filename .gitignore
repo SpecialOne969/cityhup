@@ -43,3 +43,5 @@ yarn-error.*
 # Office docs (binary, not source)
 *.docx
 *.xlsx
+
+.vercel

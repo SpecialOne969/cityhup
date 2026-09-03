@@ -11,36 +11,6 @@ import { Category } from '../../constants/categories';
 import { uploadImages } from '../../lib/uploadImage';
 import ImageUploader from '../../components/ImageUploader';
 
-const SETUP_SQL = `-- Run this once in your Supabase SQL Editor:
-
-CREATE TABLE IF NOT EXISTS categories (
-  id TEXT PRIMARY KEY,
-  label TEXT NOT NULL,
-  icon TEXT NOT NULL DEFAULT 'grid-outline',
-  color TEXT NOT NULL DEFAULT '#008751',
-  section TEXT NOT NULL,
-  sort_order INT DEFAULT 0,
-  image_url TEXT,
-  is_active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS subcategories (
-  id TEXT PRIMARY KEY,
-  category_id TEXT REFERENCES categories(id) ON DELETE CASCADE,
-  label TEXT NOT NULL,
-  sort_order INT DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
-ALTER TABLE subcategories ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "read_categories" ON categories FOR SELECT USING (true);
-CREATE POLICY "read_subcategories" ON subcategories FOR SELECT USING (true);
-CREATE POLICY "manage_categories" ON categories FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "manage_subcategories" ON subcategories FOR ALL TO authenticated USING (true) WITH CHECK (true);`;
-
 const COLOR_SWATCHES = [
   '#008751','#1565C0','#E65100','#37474F','#6A1B9A','#AD1457','#C62828','#880E4F',
   '#0277BD','#2E7D32','#4527A0','#00695C','#1B5E20','#F57F17','#BF360C','#B71C1C',
@@ -63,7 +33,6 @@ export default function AdminCategoriesScreen() {
   const currentAdmin = useAppStore(s => s.currentAdmin);
   const categories   = useAppStore(s => s.categories);
   const loadCategories       = useAppStore(s => s.loadCategories);
-  const seedCategoriesIfEmpty = useAppStore(s => s.seedCategoriesIfEmpty);
   const adminCreateCategory  = useAppStore(s => s.adminCreateCategory);
   const adminUpdateCategory  = useAppStore(s => s.adminUpdateCategory);
   const adminDeleteCategory  = useAppStore(s => s.adminDeleteCategory);
@@ -73,9 +42,6 @@ export default function AdminCategoriesScreen() {
 
   const [tab, setTab] = useState<SectionTab>('services');
   const [loading, setLoading] = useState(false);
-  const [needsSetup, setNeedsSetup] = useState(false);
-  const [showSQL, setShowSQL] = useState(false);
-  const [sqlCopied, setSqlCopied] = useState(false);
 
   // Add category form
   const [showAdd, setShowAdd] = useState(false);
@@ -113,16 +79,6 @@ export default function AdminCategoriesScreen() {
     setLoading(true);
     await loadCategories();
     setLoading(false);
-    // If still empty after load, tables may not exist
-    const store = useAppStore.getState();
-    if (!store.categoriesLoaded) setNeedsSetup(true);
-  }
-
-  async function handleSetup() {
-    setLoading(true);
-    await seedCategoriesIfEmpty();
-    setLoading(false);
-    setNeedsSetup(false);
   }
 
   async function handleAddCategory() {
@@ -181,14 +137,6 @@ export default function AdminCategoriesScreen() {
     setEditSubId(null); setSubSaving(false);
   }
 
-  function copySQL() {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(SETUP_SQL);
-      setSqlCopied(true);
-      setTimeout(() => setSqlCopied(false), 2000);
-    }
-  }
-
   if (!currentAdmin) return null;
 
   const displayCats = categories.filter(c => c.section === tab && c.isActive !== false);
@@ -201,31 +149,8 @@ export default function AdminCategoriesScreen() {
           <Ionicons name="arrow-back" size={20} color={Colors.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Category Management</Text>
-        <TouchableOpacity onPress={() => setShowSQL(v => !v)} style={styles.headerBtn}>
-          <Ionicons name="code-slash" size={20} color={Colors.white} />
-        </TouchableOpacity>
+        <View style={styles.headerBtn} />
       </View>
-
-      {/* SQL Setup Panel */}
-      {showSQL && (
-        <View style={styles.sqlPanel}>
-          <Text style={styles.sqlTitle}>Database Setup SQL</Text>
-          <Text style={styles.sqlNote}>Run this once in your Supabase SQL Editor to enable live category management.</Text>
-          <ScrollView style={styles.sqlScroll} horizontal={false}>
-            <Text style={styles.sqlCode}>{SETUP_SQL}</Text>
-          </ScrollView>
-          <TouchableOpacity style={styles.copyBtn} onPress={copySQL}>
-            <Ionicons name={sqlCopied ? 'checkmark' : 'copy-outline'} size={16} color={Colors.white} />
-            <Text style={styles.copyBtnText}>{sqlCopied ? 'Copied!' : 'Copy SQL'}</Text>
-          </TouchableOpacity>
-          {needsSetup && (
-            <TouchableOpacity style={[styles.copyBtn, { backgroundColor: Colors.success, marginTop: 8 }]} onPress={handleSetup} disabled={loading}>
-              <Ionicons name="cloud-upload-outline" size={16} color={Colors.white} />
-              <Text style={styles.copyBtnText}>{loading ? 'Seeding…' : 'Seed from current categories'}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
 
       {/* Section tabs */}
       <View style={styles.tabs}>
@@ -448,7 +373,7 @@ export default function AdminCategoriesScreen() {
           <View style={styles.empty}>
             <Ionicons name="layers-outline" size={48} color={Colors.textMuted} />
             <Text style={styles.emptyText}>No {tab} categories yet.</Text>
-            <Text style={styles.emptyNote}>Tap "Add New Category" to create one, or run the setup SQL to seed from defaults.</Text>
+            <Text style={styles.emptyNote}>Tap "Add New Category" above to create your first category.</Text>
           </View>
         )}
 
@@ -470,14 +395,6 @@ const styles = StyleSheet.create({
   },
   headerBtn:   { padding: 4 },
   headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: Colors.white },
-
-  sqlPanel: { backgroundColor: Colors.primaryDark, padding: 16, margin: 12, borderRadius: 12 },
-  sqlTitle: { fontSize: 14, fontWeight: '700', color: Colors.white, marginBottom: 4 },
-  sqlNote:  { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginBottom: 10, lineHeight: 17 },
-  sqlScroll:{ maxHeight: 180, backgroundColor: '#0a1a0e', borderRadius: 8, padding: 10, marginBottom: 10 },
-  sqlCode:  { fontSize: 11, color: '#90EE90', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
-  copyBtn:  { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.primary, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8, alignSelf: 'flex-start' },
-  copyBtnText: { color: Colors.white, fontWeight: '700', fontSize: 13 },
 
   tabs:       { flexDirection: 'row', backgroundColor: Colors.bgCard, borderBottomWidth: 1, borderBottomColor: Colors.border },
   tab:        { flex: 1, alignItems: 'center', paddingVertical: 12, gap: 2 },
