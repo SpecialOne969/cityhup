@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { COUNTRIES, STATES, getLgasByState } from '../../constants/locations';
 import { PAYMENT_BANDS, DURATIONS, PAYMENT_METHODS, MEANS_OF_ID, NATURE_OF_BIZ_OPTIONS } from '../../constants/subscriptions';
-import { CATEGORIES } from '../../constants/categories';
+import { getLiveCategories } from '../../constants/categories';
 import { useAppStore } from '../../store/useAppStore';
 import { ClientType, PaymentMethod, MeansOfId } from '../../types';
 import ImageUploader from '../../components/ImageUploader';
@@ -566,7 +566,7 @@ export default function RegisterScreen() {
               <Text style={styles.stepNote}>Select Business Categories</Text>
               <Text style={styles.stepInfo}>Select all categories that apply to this business.</Text>
 
-              {CATEGORIES.map(cat => (
+              {getLiveCategories().map(cat => (
                 <TouchableOpacity
                   key={cat.id}
                   style={[styles.catCheck, selectedCats.includes(cat.id) && styles.catCheckActive]}

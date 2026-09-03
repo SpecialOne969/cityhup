@@ -10,6 +10,29 @@ export interface Category {
   color: string;
   section: 'services' | 'goods';
   subcategories: SubCategory[];
+  imageUrl?: string;
+  isActive?: boolean;
+  sortOrder?: number;
+}
+
+// Dynamic backing — set by the store after loading from DB.
+// Falls back to static CATEGORIES when DB has not been loaded yet.
+let _live: Category[] | null = null;
+
+export function setDynamicCategories(cats: Category[]) {
+  _live = cats.length > 0 ? cats : null;
+}
+
+export function getLiveCategories(): Category[] {
+  return _live ?? CATEGORIES;
+}
+
+export function getLiveServiceCategories(): Category[] {
+  return getLiveCategories().filter(c => c.section === 'services');
+}
+
+export function getLiveGoodsCategories(): Category[] {
+  return getLiveCategories().filter(c => c.section === 'goods');
 }
 
 export const CATEGORIES: Category[] = [
@@ -595,7 +618,7 @@ export const SERVICE_CATEGORIES = CATEGORIES.filter(c => c.section === 'services
 export const GOODS_CATEGORIES   = CATEGORIES.filter(c => c.section === 'goods');
 
 export function getCategoryById(id: string): Category | undefined {
-  return CATEGORIES.find(c => c.id === id);
+  return getLiveCategories().find(c => c.id === id);
 }
 
 export const QUICK_CATEGORIES = [

@@ -6,7 +6,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
-import { CATEGORIES, SERVICE_CATEGORIES, GOODS_CATEGORIES } from '../constants/categories';
+import { getLiveCategories, getLiveServiceCategories, getLiveGoodsCategories } from '../constants/categories';
 import { useAppStore } from '../store/useAppStore';
 import Header from '../components/Header';
 import AdBanner from '../components/AdBanner';
@@ -114,7 +114,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
             <TouchableOpacity style={styles.statChip} onPress={() => router.push('/browse')}>
               <Ionicons name="grid-outline" size={14} color={Colors.primary} />
-              <Text style={styles.statText}>{CATEGORIES.length} Categories</Text>
+              <Text style={styles.statText}>{getLiveCategories().length} Categories</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.statChip}
@@ -178,7 +178,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScroll}>
-            {SERVICE_CATEGORIES.slice(0, 10).map(cat => (
+            {getLiveServiceCategories().slice(0, 10).map(cat => (
               <TouchableOpacity
                 key={cat.id}
                 style={styles.serviceChip}
@@ -202,7 +202,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScroll}>
-            {GOODS_CATEGORIES.slice(0, 10).map(cat => (
+            {getLiveGoodsCategories().slice(0, 10).map(cat => (
               <TouchableOpacity
                 key={cat.id}
                 style={styles.serviceChip}

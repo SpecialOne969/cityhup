@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { STATES, getLgasByState } from '../constants/locations';
-import { CATEGORIES } from '../constants/categories';
+import { getLiveCategories } from '../constants/categories';
 import { useAppStore } from '../store/useAppStore';
 
 function SelectPicker({ options, value, onChange, placeholder }: {
@@ -164,7 +164,7 @@ export default function CustomerRegisterScreen() {
           <Text style={[styles.sectionLabel, { marginTop: 16 }]}>What are you looking for?</Text>
           <Text style={styles.labelSub}>Select services you're interested in (optional)</Text>
           <View style={styles.catGrid}>
-            {CATEGORIES.slice(0, 16).map(cat => (
+            {getLiveCategories().slice(0, 16).map(cat => (
               <TouchableOpacity
                 key={cat.id}
                 style={[styles.catChip, selectedCats.includes(cat.id) && { backgroundColor: cat.color, borderColor: cat.color }]}

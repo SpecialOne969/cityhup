@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView } from '
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
-import { SERVICE_CATEGORIES, GOODS_CATEGORIES } from '../../constants/categories';
+import { getLiveServiceCategories, getLiveGoodsCategories } from '../../constants/categories';
 import { useAppStore } from '../../store/useAppStore';
 import Header from '../../components/Header';
 import CategoryCard from '../../components/CategoryCard';
@@ -17,7 +17,7 @@ export default function BrowseScreen() {
     return clients.filter(c => c.status === 'approved' && c.categories.includes(catId)).length;
   }
 
-  const displayCats = tab === 'services' ? SERVICE_CATEGORIES : GOODS_CATEGORIES;
+  const displayCats = tab === 'services' ? getLiveServiceCategories() : getLiveGoodsCategories();
 
   return (
     <View style={styles.root}>

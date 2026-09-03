@@ -287,8 +287,12 @@ export default function AdminDashboard() {
 
           {/* Quick actions */}
           <View style={styles.quickActions}>
-            <TouchableOpacity style={styles.qaBtn} onPress={() => router.push('/admin/ads')}>
-              <Ionicons name="megaphone-outline" size={22} color={Colors.primary} />
+            <TouchableOpacity style={styles.qaBtn} onPress={() => router.push('/admin/categories' as any)}>
+              <Ionicons name="layers-outline" size={22} color={Colors.primary} />
+              <Text style={styles.qaBtnText}>Categories</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.qaBtn} onPress={() => router.push('/admin/ads' as any)}>
+              <Ionicons name="megaphone-outline" size={22} color={Colors.warning} />
               <Text style={styles.qaBtnText}>Manage Ads</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.qaBtn} onPress={() => router.push('/register' as any)}>

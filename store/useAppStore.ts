@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Client, Admin, Customer, Complaint, SearchFilters, Ad, Review } from '../types';
 import { generateClientCode } from '../constants/locations';
-import { CATEGORIES } from '../constants/categories';
+import { Category, SubCategory, CATEGORIES, getLiveCategories, setDynamicCategories } from '../constants/categories';
 import { supabase, dbToClient, clientToDb, dbToAdmin, dbToCustomer, dbToComplaint, dbToAd, dbToReview } from '../lib/supabase';
 
 interface AppState {
@@ -61,6 +61,19 @@ interface AppState {
 
   trafficCount: number;
   incrementTraffic: () => void;
+
+  // Dynamic categories (DB-backed)
+  categories: Category[];
+  categoriesLoaded: boolean;
+  loadCategories: () => Promise<void>;
+  seedCategoriesIfEmpty: () => Promise<void>;
+  adminCreateCategory: (data: { label: string; icon: string; color: string; section: 'services' | 'goods'; imageUrl?: string }) => Promise<Category | null>;
+  adminUpdateCategory: (id: string, data: { label?: string; icon?: string; color?: string; imageUrl?: string; isActive?: boolean }) => Promise<void>;
+  adminDeleteCategory: (id: string) => Promise<void>;
+  adminAddSubcategory: (categoryId: string, label: string) => Promise<SubCategory | null>;
+  adminUpdateSubcategory: (categoryId: string, subId: string, label: string) => Promise<void>;
+  adminDeleteSubcategory: (categoryId: string, subId: string) => Promise<void>;
+  adminReorderCategory: (id: string, sortOrder: number) => Promise<void>;
 }
 
 async function hashPassword(password: string): Promise<string> {
@@ -250,6 +263,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       .order('registered_at', { ascending: false });
     set({ clients: (data ?? []).map(dbToClient), isLoading: false });
     await get().loadAds();
+    get().loadCategories(); // non-blocking
   },
 
   addClient: async (data) => {
@@ -406,7 +420,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { query, country, state, lga, city, category, section } = searchFilters;
     const q = query.toLowerCase();
     const sectionIds = section
-      ? new Set(CATEGORIES.filter(cat => cat.section === section).map(cat => cat.id))
+      ? new Set(getLiveCategories().filter(cat => cat.section === section).map(cat => cat.id))
       : null;
     const results = approved.filter(c => {
       const matchQuery =
@@ -517,4 +531,156 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   trafficCount: 14872,
   incrementTraffic: () => set(state => ({ trafficCount: state.trafficCount + 1 })),
+
+  // ── Dynamic categories ────────────────────────────────────────────────────
+  categories: [],
+  categoriesLoaded: false,
+
+  loadCategories: async () => {
+    try {
+      const { data: cats, error } = await supabase
+        .from('categories')
+        .select('id, label, icon, color, section, sort_order, image_url, is_active')
+        .order('sort_order', { ascending: true });
+
+      if (error) { return; } // table not created yet — static fallback
+
+      const { data: subs } = await supabase
+        .from('subcategories')
+        .select('id, category_id, label, sort_order')
+        .order('sort_order', { ascending: true });
+
+      if (!cats || cats.length === 0) {
+        await get().seedCategoriesIfEmpty();
+        return;
+      }
+
+      const subMap: Record<string, SubCategory[]> = {};
+      (subs ?? []).forEach((s: any) => {
+        if (!subMap[s.category_id]) subMap[s.category_id] = [];
+        subMap[s.category_id].push({ id: s.id, label: s.label });
+      });
+
+      const categories: Category[] = cats.map((c: any) => ({
+        id: c.id, label: c.label, icon: c.icon, color: c.color,
+        section: c.section, imageUrl: c.image_url, isActive: c.is_active,
+        sortOrder: c.sort_order, subcategories: subMap[c.id] ?? [],
+      }));
+
+      set({ categories, categoriesLoaded: true });
+      setDynamicCategories(categories);
+    } catch { /* silently fall back to static */ }
+  },
+
+  seedCategoriesIfEmpty: async () => {
+    const staticCats = CATEGORIES;
+    for (let i = 0; i < staticCats.length; i++) {
+      const cat = staticCats[i];
+      await supabase.from('categories').upsert({
+        id: cat.id, label: cat.label, icon: cat.icon, color: cat.color,
+        section: cat.section, sort_order: i, is_active: true,
+      }, { onConflict: 'id' });
+      for (let j = 0; j < cat.subcategories.length; j++) {
+        const sub = cat.subcategories[j];
+        await supabase.from('subcategories').upsert({
+          id: sub.id, category_id: cat.id, label: sub.label, sort_order: j,
+        }, { onConflict: 'id' });
+      }
+    }
+    await get().loadCategories();
+  },
+
+  adminCreateCategory: async (data) => {
+    const id = data.label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
+    const sortOrder = get().categories.length;
+    const { data: inserted, error } = await supabase.from('categories').insert({
+      id, label: data.label, icon: data.icon, color: data.color,
+      section: data.section, image_url: data.imageUrl ?? null, sort_order: sortOrder, is_active: true,
+    }).select().single();
+    if (error || !inserted) return null;
+    const newCat: Category = { id, ...data, subcategories: [], isActive: true, sortOrder };
+    set(state => {
+      const cats = [...state.categories, newCat];
+      setDynamicCategories(cats);
+      return { categories: cats };
+    });
+    return newCat;
+  },
+
+  adminUpdateCategory: async (id, data) => {
+    const row: any = {};
+    if (data.label !== undefined) row.label = data.label;
+    if (data.icon !== undefined) row.icon = data.icon;
+    if (data.color !== undefined) row.color = data.color;
+    if (data.imageUrl !== undefined) row.image_url = data.imageUrl;
+    if (data.isActive !== undefined) row.is_active = data.isActive;
+    await supabase.from('categories').update(row).eq('id', id);
+    set(state => {
+      const cats = state.categories.map(c => c.id === id ? { ...c, ...data } : c);
+      setDynamicCategories(cats);
+      return { categories: cats };
+    });
+  },
+
+  adminDeleteCategory: async (id) => {
+    await supabase.from('categories').delete().eq('id', id);
+    set(state => {
+      const cats = state.categories.filter(c => c.id !== id);
+      setDynamicCategories(cats);
+      return { categories: cats };
+    });
+  },
+
+  adminAddSubcategory: async (categoryId, label) => {
+    const id = categoryId + '-' + label.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString(36);
+    const sortOrder = (get().categories.find(c => c.id === categoryId)?.subcategories.length ?? 0);
+    const { data: inserted, error } = await supabase.from('subcategories').insert({
+      id, category_id: categoryId, label, sort_order: sortOrder,
+    }).select().single();
+    if (error || !inserted) return null;
+    const sub: SubCategory = { id, label };
+    set(state => {
+      const cats = state.categories.map(c =>
+        c.id === categoryId ? { ...c, subcategories: [...c.subcategories, sub] } : c
+      );
+      setDynamicCategories(cats);
+      return { categories: cats };
+    });
+    return sub;
+  },
+
+  adminUpdateSubcategory: async (categoryId, subId, label) => {
+    await supabase.from('subcategories').update({ label }).eq('id', subId);
+    set(state => {
+      const cats = state.categories.map(c =>
+        c.id === categoryId
+          ? { ...c, subcategories: c.subcategories.map(s => s.id === subId ? { ...s, label } : s) }
+          : c
+      );
+      setDynamicCategories(cats);
+      return { categories: cats };
+    });
+  },
+
+  adminDeleteSubcategory: async (categoryId, subId) => {
+    await supabase.from('subcategories').delete().eq('id', subId);
+    set(state => {
+      const cats = state.categories.map(c =>
+        c.id === categoryId
+          ? { ...c, subcategories: c.subcategories.filter(s => s.id !== subId) }
+          : c
+      );
+      setDynamicCategories(cats);
+      return { categories: cats };
+    });
+  },
+
+  adminReorderCategory: async (id, sortOrder) => {
+    await supabase.from('categories').update({ sort_order: sortOrder }).eq('id', id);
+    set(state => {
+      const cats = state.categories.map(c => c.id === id ? { ...c, sortOrder } : c);
+      setDynamicCategories(cats);
+      return { categories: cats };
+    });
+  },
 }));

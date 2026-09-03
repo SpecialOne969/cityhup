@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { useAppStore } from '../store/useAppStore';
 import { COUNTRIES, STATES, LGAS } from '../constants/locations';
-import { CATEGORIES } from '../constants/categories';
+import { getLiveCategories } from '../constants/categories';
 import Header from '../components/Header';
 import ListingCard from '../components/ListingCard';
 
@@ -89,7 +89,7 @@ export default function SearchScreen() {
     setSearchFilters({ query: '' }); runSearch();
   }
 
-  const activeCatLabel = CATEGORIES.find(c => c.id === catFilter)?.label;
+  const activeCatLabel = getLiveCategories().find(c => c.id === catFilter)?.label;
   const activeFilterChips = [
     countryFilter && { key: 'country', label: countryFilter, clear: () => { setCountryFilter(''); setStateFilter(''); setLgaFilter(''); } },
     stateFilter && { key: 'state', label: stateFilter, clear: () => { setStateFilter(''); setLgaFilter(''); } },
@@ -213,7 +213,7 @@ export default function SearchScreen() {
           {/* Category */}
           <Text style={styles.filterLabel}>Category</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScrollContent}>
-            {[{ id: '', label: 'All Categories' }, ...CATEGORIES].map(c => (
+            {[{ id: '', label: 'All Categories' }, ...getLiveCategories()].map(c => (
               <TouchableOpacity
                 key={c.id}
                 style={[styles.filterChip, catFilter === c.id && styles.filterChipActive]}
