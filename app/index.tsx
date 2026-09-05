@@ -60,27 +60,27 @@ export default function HomeScreen() {
             <ScrollView style={styles.infoModalBody} showsVerticalScrollIndicator={false}>
               <Text style={styles.infoItem}>
                 <Text style={styles.infoLabel}>🟢 Free to Search:</Text>
-                {' '}Browsing and contacting service providers on CityHup is completely free for everyone.
+                {' '}Browsing and contacting service providers on CityHup is completely free for customers.
               </Text>
               <Text style={styles.infoItem}>
                 <Text style={styles.infoLabel}>✅ Verified Listings:</Text>
-                {' '}All business listings are manually verified by City Hup agents before going live.
-              </Text>
-              <Text style={styles.infoItem}>
-                <Text style={styles.infoLabel}>📍 West Africa Coverage:</Text>
-                {' '}We currently serve Nigeria, Ghana, Benin Republic, and Liberia with more countries coming soon.
+                {' '}All business listings are manually verified by CityHup agents before going live.
               </Text>
               <Text style={styles.infoItem}>
                 <Text style={styles.infoLabel}>🏢 List Your Business:</Text>
                 {' '}Businesses can register by tapping "List Business" in the top menu. Listing requires a one-time fee.
               </Text>
               <Text style={styles.infoItem}>
+                <Text style={styles.infoLabel}>🛡️ Ground Norms:</Text>
+                {' '}We maintain a strict zero-tolerance policy toward any fraudulent, deceptive, or malicious activity by either customers or service providers. Any attempt to engage in fraud will result in immediate account termination.
+              </Text>
+              <Text style={styles.infoItem}>
                 <Text style={styles.infoLabel}>⚠️ Disclaimer:</Text>
-                {' '}CityHup is a directory platform. We do not guarantee the quality of listed providers. Always verify before making payments.
+                {' '}CityHup is a directory platform. We do not guarantee the quality of listed providers. Always do your due diligence and verify before making payments.
               </Text>
               <Text style={styles.infoItem}>
                 <Text style={styles.infoLabel}>📞 Support:</Text>
-                {' '}Contact us via WhatsApp or visit any CityHup agent office near you.
+                {' '}Contact us via mail, WhatsApp or visit any CityHup agent office near you.
               </Text>
             </ScrollView>
             <TouchableOpacity style={styles.infoModalBtn} onPress={dismissInfo}>

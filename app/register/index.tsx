@@ -26,10 +26,10 @@ function FieldRow({ label, children, required }: { label: string; children: Reac
   );
 }
 
-function Input({ value, onChangeText, placeholder, keyboardType, multiline, numberOfLines }: any) {
+function Input({ value, onChangeText, placeholder, keyboardType, multiline, numberOfLines, style }: any) {
   return (
     <TextInput
-      style={[styles.input, multiline && { height: (numberOfLines ?? 3) * 22, textAlignVertical: 'top' }]}
+      style={[styles.input, multiline && { height: (numberOfLines ?? 3) * 22, textAlignVertical: 'top' }, style]}
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
@@ -98,6 +98,7 @@ export default function RegisterScreen() {
   const [country, setCountry] = useState('Nigeria');
   const [state, setState] = useState('');
   const [lga, setLga] = useState('');
+  const [customLga, setCustomLga] = useState('');
   const [city, setCity] = useState('');
   const [area, setArea] = useState('');
   const [town, setTown] = useState('');
@@ -186,7 +187,8 @@ export default function RegisterScreen() {
 
   function validateStep(): boolean {
     if (step === 0) {
-      if (!natureOfBiz || !country || !state || !lga || !city) {
+      const effectiveLga = lga === '__other__' ? customLga.trim() : lga;
+      if (!natureOfBiz || !country || !state || !effectiveLga || !city) {
         Alert.alert('Required fields', 'Please fill all required fields (Nature of Biz, Country, State, LGA, City)');
         return false;
       }
@@ -280,7 +282,7 @@ export default function RegisterScreen() {
         natureOfBiz,
         country,
         state,
-        lga,
+        lga: lga === '__other__' ? customLga.trim() : lga,
         city,
         area,
         town,
@@ -350,7 +352,11 @@ export default function RegisterScreen() {
     }
   }
 
-  const lgaOptions = getLgasByState(state).map(l => ({ label: l, value: l }));
+  const rawLgas = getLgasByState(state);
+  const lgaOptions = [
+    ...rawLgas.map(l => ({ label: l, value: l })),
+    { label: 'Other (type manually)', value: '__other__' },
+  ];
 
   return (
     <View style={styles.root}>
@@ -427,12 +433,30 @@ export default function RegisterScreen() {
               </FieldRow>
 
               <FieldRow label="LGA" required>
-                <SelectPicker
-                  options={lgaOptions}
-                  value={lga}
-                  onChange={setLga}
-                  placeholder={state ? 'Select LGA' : 'Select state first'}
-                />
+                {rawLgas.length === 0 ? (
+                  <Input
+                    value={lga === '__other__' ? customLga : lga}
+                    onChangeText={v => { setLga('__other__'); setCustomLga(v); }}
+                    placeholder={state ? 'Type your LGA' : 'Select state first'}
+                  />
+                ) : (
+                  <>
+                    <SelectPicker
+                      options={lgaOptions}
+                      value={lga}
+                      onChange={v => { setLga(v); if (v !== '__other__') setCustomLga(''); }}
+                      placeholder="Select LGA"
+                    />
+                    {lga === '__other__' && (
+                      <Input
+                        value={customLga}
+                        onChangeText={setCustomLga}
+                        placeholder="Type your LGA"
+                        style={{ marginTop: 8 }}
+                      />
+                    )}
+                  </>
+                )}
               </FieldRow>
 
               <FieldRow label="City" required>

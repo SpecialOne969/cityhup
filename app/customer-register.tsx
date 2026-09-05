@@ -57,6 +57,7 @@ export default function CustomerRegisterScreen() {
   const [phone, setPhone] = useState('');
   const [state, setState] = useState('');
   const [lga, setLga] = useState('');
+  const [customLga, setCustomLga] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -64,7 +65,11 @@ export default function CustomerRegisterScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const lgaOptions = getLgasByState(state).map(l => ({ label: l, value: l }));
+  const rawLgas = getLgasByState(state);
+  const lgaOptions = [
+    ...rawLgas.map(l => ({ label: l, value: l })),
+    { label: 'Other (type manually)', value: '__other__' },
+  ];
   const nigeriaStates = (STATES['Nigeria'] ?? []).map(s => ({ label: s, value: s }));
 
   function toggleCat(id: string) {
@@ -85,7 +90,7 @@ export default function CustomerRegisterScreen() {
         email: email.trim().toLowerCase(),
         phone: phone.trim() || undefined,
         state: state || undefined,
-        lga: lga || undefined,
+        lga: (lga === '__other__' ? customLga.trim() : lga) || undefined,
         interestedCategories: selectedCats,
         password,
       });
@@ -156,7 +161,33 @@ export default function CustomerRegisterScreen() {
           {state ? (
             <>
               <Text style={[styles.label, { marginTop: 12 }]}>LGA</Text>
-              <SelectPicker options={lgaOptions} value={lga} onChange={setLga} placeholder="Select your LGA" />
+              {rawLgas.length === 0 ? (
+                <TextInput
+                  style={styles.input}
+                  value={lga === '__other__' ? customLga : lga}
+                  onChangeText={v => { setLga('__other__'); setCustomLga(v); }}
+                  placeholder="Type your LGA"
+                  placeholderTextColor={Colors.textMuted}
+                />
+              ) : (
+                <>
+                  <SelectPicker
+                    options={lgaOptions}
+                    value={lga}
+                    onChange={v => { setLga(v); if (v !== '__other__') setCustomLga(''); }}
+                    placeholder="Select your LGA"
+                  />
+                  {lga === '__other__' && (
+                    <TextInput
+                      style={[styles.input, { marginTop: 8 }]}
+                      value={customLga}
+                      onChangeText={setCustomLga}
+                      placeholder="Type your LGA"
+                      placeholderTextColor={Colors.textMuted}
+                    />
+                  )}
+                </>
+              )}
             </>
           ) : null}
 
