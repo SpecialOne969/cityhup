@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { useAppStore } from '../../store/useAppStore';
 import { supabase } from '../../lib/supabase';
+import { checkRateLimit, recordFailedAttempt, clearFailedAttempts, isValidEmail } from '../../lib/security';
 
 type Mode = 'login' | 'forgot';
 
@@ -34,17 +35,29 @@ export default function AdminLoginScreen() {
 
   async function handleLogin() {
     setError('');
-    if (!adminCode.trim() || !password) {
+    const code = adminCode.trim().toUpperCase();
+    if (!code || !password) {
       setError('Please enter your admin code and password.');
       return;
     }
+
+    // Rate limiting — 5 attempts then 15-min lockout
+    const rlKey = `admin:${code}`;
+    const { allowed, waitSeconds } = checkRateLimit(rlKey);
+    if (!allowed) {
+      setError(`Too many failed attempts. Try again in ${Math.ceil(waitSeconds / 60)} minute(s).`);
+      return;
+    }
+
     setLoading(true);
     try {
-      const ok = await login(adminCode.trim().toUpperCase(), password);
+      const ok = await login(code, password);
       if (ok) {
+        clearFailedAttempts(rlKey);
         router.replace('/admin/dashboard');
       } else {
-        setError('Invalid admin code or password. Contact City Hup HQ.');
+        recordFailedAttempt(rlKey);
+        setError('Invalid admin code or password. Contact City Hup HQ if locked out.');
       }
     } catch {
       setError('Could not connect. Check your internet connection.');
@@ -55,8 +68,8 @@ export default function AdminLoginScreen() {
 
   async function handleForgotPassword() {
     setResetError('');
-    if (!resetEmail.trim() || !resetEmail.includes('@')) {
-      setResetError('Enter the email address linked to your admin account.');
+    if (!resetEmail.trim() || !isValidEmail(resetEmail)) {
+      setResetError('Enter a valid email address linked to your admin account.');
       return;
     }
     setResetLoading(true);
@@ -148,7 +161,7 @@ export default function AdminLoginScreen() {
 
               <View style={styles.hint}>
                 <Ionicons name="information-circle-outline" size={14} color={Colors.textLight} />
-                <Text style={styles.hintText}>Admin codes are issued by City Hup Ltd HQ. Use ADM-PH-001 for demo.</Text>
+                <Text style={styles.hintText}>Admin codes are issued by City Hup Ltd HQ.</Text>
               </View>
             </>
           ) : resetSent ? (

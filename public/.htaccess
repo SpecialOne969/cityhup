@@ -1,5 +1,74 @@
+# ── SPA routing ──────────────────────────────────────────────────────────────
 Options -MultiViews
 RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^ index.html [QSA,L]
+
+# ── Force HTTPS ───────────────────────────────────────────────────────────────
+RewriteCond %{HTTPS} off
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# ── Disable directory listing ─────────────────────────────────────────────────
+Options -Indexes
+
+# ── Block hidden/dot files ────────────────────────────────────────────────────
+<FilesMatch "^\.">
+  Order allow,deny
+  Deny from all
+</FilesMatch>
+
+# ── Block access to sensitive files ──────────────────────────────────────────
+<FilesMatch "\.(env|log|sql|sh|bak|config|lock)$">
+  Order allow,deny
+  Deny from all
+</FilesMatch>
+
+# ── Security headers ──────────────────────────────────────────────────────────
+<IfModule mod_headers.c>
+  # Prevent clickjacking
+  Header always set X-Frame-Options "SAMEORIGIN"
+
+  # Prevent MIME-type sniffing
+  Header always set X-Content-Type-Options "nosniff"
+
+  # Enable XSS filter in old browsers
+  Header always set X-XSS-Protection "1; mode=block"
+
+  # Control referrer info
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+  # Disable unnecessary browser features
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+
+  # HSTS — force HTTPS for 1 year, include subdomains, submit to preload list
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+  # Content Security Policy
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self';"
+
+  # Remove server info headers
+  Header always unset X-Powered-By
+  Header always unset Server
+</IfModule>
+
+# ── Limit upload size (10MB max) ──────────────────────────────────────────────
+<IfModule mod_php.c>
+  php_value upload_max_filesize 10M
+  php_value post_max_size 10M
+</IfModule>
+
+# ── Compression (performance + smaller attack surface) ────────────────────────
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json
+</IfModule>
+
+# ── Cache control for static assets ──────────────────────────────────────────
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/png  "access plus 1 year"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 month"
+  ExpiresByType text/css "access plus 1 month"
+</IfModule>

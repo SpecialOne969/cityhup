@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
 import { Colors } from '../../constants/colors';
 import { getCategoryById } from '../../constants/categories';
 import { useAppStore } from '../../store/useAppStore';
@@ -37,28 +38,23 @@ export default function CategoryListingsScreen() {
         </View>
       </View>
 
-      {/* Subcategory filter */}
+      {/* Subcategory filter — dropdown */}
       {cat && cat.subcategories.length > 0 && (
         <View style={styles.subFilterWrap}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subFilterScroll}>
-            <TouchableOpacity
-              style={[styles.subChip, !subFilter && styles.subChipActive]}
-              onPress={() => setSubFilter('')}
+          <Ionicons name="filter-outline" size={16} color={Colors.textMedium} style={styles.filterIcon} />
+          <View style={styles.pickerWrap}>
+            <Picker
+              selectedValue={subFilter}
+              onValueChange={v => setSubFilter(v as string)}
+              style={styles.picker}
+              dropdownIconColor={Colors.primary}
             >
-              <Text style={[styles.subChipText, !subFilter && styles.subChipTextActive]}>All</Text>
-            </TouchableOpacity>
-            {cat.subcategories.map(sub => (
-              <TouchableOpacity
-                key={sub.id}
-                style={[styles.subChip, subFilter === sub.id && styles.subChipActive]}
-                onPress={() => setSubFilter(sub.id)}
-              >
-                <Text style={[styles.subChipText, subFilter === sub.id && styles.subChipTextActive]}>
-                  {sub.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+              <Picker.Item label="All subcategories" value="" color={Colors.textDark} />
+              {cat.subcategories.map(sub => (
+                <Picker.Item key={sub.id} label={sub.label} value={sub.id} color={Colors.textDark} />
+              ))}
+            </Picker>
+          </View>
         </View>
       )}
 
@@ -109,17 +105,21 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgCard,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
-  },
-  subFilterScroll: { paddingHorizontal: 12, paddingVertical: 10, gap: 6 },
-  subChip: {
-    backgroundColor: Colors.borderLight,
-    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 5,
   },
-  subChipActive: { backgroundColor: Colors.primary },
-  subChipText: { fontSize: 12, color: Colors.textMedium },
-  subChipTextActive: { color: Colors.white, fontWeight: '600' },
+  filterIcon: { marginRight: 8 },
+  pickerWrap: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    marginVertical: 8,
+    overflow: 'hidden',
+    backgroundColor: Colors.bgLight,
+  },
+  picker: { height: 44, color: Colors.textDark },
   list: { padding: 16, paddingBottom: 32 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: Colors.textMedium, marginTop: 12 },

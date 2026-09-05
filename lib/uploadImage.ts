@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { validateUpload, ALLOWED_IMAGE_TYPES } from './security';
 import * as ImagePicker from 'expo-image-picker';
 import { Platform } from 'react-native';
 
@@ -22,39 +23,60 @@ export async function pickImages(multiSelect = false): Promise<string[]> {
 export async function uploadImage(
   uri: string,
   bucket: string,
-  path: string
+  _ignoredPath: string   // caller-supplied path is ignored — we generate a safe UUID path
 ): Promise<string> {
   const response = await fetch(uri);
   const blob = await response.blob();
-  const ext = (uri.split('.').pop() ?? 'jpg').toLowerCase().split('?')[0];
-  const contentType = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : 'image/jpeg';
+
+  // ── Security: validate type and size ──────────────────────────────────────
+  const validation = validateUpload(blob);
+  if (!validation.ok) throw new Error(validation.reason);
+
+  // Derive extension from validated MIME type
+  const mimeToExt: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png':  'png',
+    'image/webp': 'webp',
+    'image/gif':  'gif',
+  };
+  const ext = mimeToExt[blob.type] ?? 'jpg';
+
+  // ── Security: UUID filename — no predictable paths ─────────────────────
+  const safePath = `uploads/${crypto.randomUUID()}.${ext}`;
 
   const { error } = await supabase.storage
     .from(bucket)
-    .upload(path, blob, { contentType, upsert: true });
+    .upload(safePath, blob, { contentType: blob.type, upsert: false });
 
   if (error) throw error;
 
-  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+  const { data } = supabase.storage.from(bucket).getPublicUrl(safePath);
   return data.publicUrl;
 }
 
 export async function uploadImages(
   uris: string[],
   bucket: string,
-  folder: string
+  _folder?: string       // ignored — kept for API compatibility
 ): Promise<string[]> {
   const urls: string[] = [];
-  for (let i = 0; i < uris.length; i++) {
-    const uri = uris[i];
+  for (const uri of uris) {
     if (uri.startsWith('http')) {
-      urls.push(uri);
+      // Already a remote URL — validate it comes from our own Supabase bucket
+      const supabaseHost = process.env.EXPO_PUBLIC_SUPABASE_URL?.replace('https://', '');
+      if (supabaseHost && uri.includes(supabaseHost)) {
+        urls.push(uri);
+      }
+      // Silently drop URLs from unknown hosts
       continue;
     }
-    const ext = (uri.split('.').pop() ?? 'jpg').toLowerCase().split('?')[0];
-    const path = `${folder}/${Date.now()}_${i}.${ext}`;
-    const url = await uploadImage(uri, bucket, path);
+    const url = await uploadImage(uri, bucket, '');
     urls.push(url);
   }
   return urls;
+}
+
+/** Check if a file MIME type is permitted before even picking. */
+export function isMimeAllowed(type: string): boolean {
+  return ALLOWED_IMAGE_TYPES.includes(type);
 }

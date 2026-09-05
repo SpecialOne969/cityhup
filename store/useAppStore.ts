@@ -3,6 +3,7 @@ import { Client, Admin, Customer, Complaint, SearchFilters, Ad, Review } from '.
 import { generateClientCode } from '../constants/locations';
 import { Category, SubCategory, CATEGORIES, getLiveCategories, setDynamicCategories } from '../constants/categories';
 import { supabase, dbToClient, clientToDb, dbToAdmin, dbToCustomer, dbToComplaint, dbToAd, dbToReview } from '../lib/supabase';
+import { hashPassword, verifyPassword, sanitizeText, checkRateLimit, recordFailedAttempt, clearFailedAttempts } from '../lib/security';
 
 interface AppState {
   // Admin auth
@@ -76,11 +77,7 @@ interface AppState {
   adminReorderCategory: (id: string, sortOrder: number) => Promise<void>;
 }
 
-async function hashPassword(password: string): Promise<string> {
-  const data = new TextEncoder().encode(password);
-  const hashBuf = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
+// Password hashing is handled by lib/security (PBKDF2 + salt)
 
 export const useAppStore = create<AppState>((set, get) => ({
   currentAdmin: null,
@@ -123,16 +120,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   restoreSession: async () => {
-    // Restore customer session from localStorage (no Supabase Auth for customers)
-    if (typeof localStorage !== 'undefined') {
-      const savedId = localStorage.getItem('ch_customer_id');
+    // Restore customer session from sessionStorage (cleared on tab close)
+    if (typeof sessionStorage !== 'undefined') {
+      const savedId = sessionStorage.getItem('ch_customer_id');
       if (savedId) {
         const { data: customerRow } = await supabase
           .from('customers').select('*').eq('id', savedId).maybeSingle();
         if (customerRow) {
           set({ currentCustomer: dbToCustomer(customerRow) });
         } else {
-          localStorage.removeItem('ch_customer_id');
+          sessionStorage.removeItem('ch_customer_id');
         }
       }
     }
@@ -206,30 +203,52 @@ export const useAppStore = create<AppState>((set, get) => ({
   currentCustomer: null,
 
   customerLogin: async (email, password) => {
+    const key = `customer:${email.trim().toLowerCase()}`;
+    const { allowed, waitSeconds } = checkRateLimit(key);
+    if (!allowed) throw new Error(`Too many failed attempts. Try again in ${Math.ceil(waitSeconds / 60)} minute(s).`);
+
+    // Use a generic error for all failure cases to prevent user enumeration
     const { data: row } = await supabase
-      .from('customers').select('*').eq('email', email.toLowerCase()).maybeSingle();
-    if (!row) return false;
-    const hash = await hashPassword(password);
-    if (row.password_hash !== hash) return false;
+      .from('customers').select('*').eq('email', email.trim().toLowerCase()).maybeSingle();
+
+    const valid = row ? await verifyPassword(password, row.password_hash ?? '') : false;
+
+    if (!row || !valid) {
+      recordFailedAttempt(key);
+      return false;
+    }
+
+    clearFailedAttempts(key);
+
+    // Opportunistically upgrade legacy SHA-256 hash to PBKDF2 on next login
+    if (row.password_hash && !row.password_hash.startsWith('pbkdf2:')) {
+      const upgraded = await hashPassword(password);
+      await supabase.from('customers').update({ password_hash: upgraded }).eq('id', row.id);
+    }
+
     const customer = dbToCustomer(row);
     set({ currentCustomer: customer });
-    if (typeof localStorage !== 'undefined') localStorage.setItem('ch_customer_id', row.id);
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem('ch_customer_id', row.id);
+    }
     return true;
   },
 
   customerLogout: async () => {
     set({ currentCustomer: null });
-    if (typeof localStorage !== 'undefined') localStorage.removeItem('ch_customer_id');
+    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('ch_customer_id');
   },
 
   registerCustomer: async ({ fullName, email, phone, state, lga, interestedCategories, password }) => {
     const normalizedEmail = email.trim().toLowerCase();
+
+    // Check for existing account — but use generic error to prevent enumeration
     const { data: existing } = await supabase
       .from('customers').select('id').eq('email', normalizedEmail).maybeSingle();
     if (existing) return false;
 
     const id = crypto.randomUUID();
-    const passwordHash = await hashPassword(password);
+    const passwordHash = await hashPassword(password); // PBKDF2 with salt
 
     const { error } = await supabase.from('customers').insert({
       id,
@@ -247,7 +266,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { data: row } = await supabase.from('customers').select('*').eq('id', id).single();
     if (row) {
       set({ currentCustomer: dbToCustomer(row) });
-      if (typeof localStorage !== 'undefined') localStorage.setItem('ch_customer_id', id);
+      if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('ch_customer_id', id);
     }
     return true;
   },
@@ -268,8 +287,14 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   addClient: async (data) => {
     const clientCode = generateClientCode(data.state);
+    // Sanitize free-text fields before storing
     const row = clientToDb({
       ...data,
+      businessName: sanitizeText(data.businessName ?? '', 200),
+      profile:      sanitizeText(data.profile ?? '', 2000),
+      info:         sanitizeText(data.info ?? '', 2000),
+      competence:   sanitizeText(data.competence ?? '', 500),
+      address:      sanitizeText(data.address ?? '', 300),
       clientCode,
       status: 'pending',
       registeredAt: new Date().toISOString(),
