@@ -14,6 +14,7 @@ import { ClientType, PaymentMethod, MeansOfId } from '../../types';
 import ImageUploader from '../../components/ImageUploader';
 import { uploadImages, uploadImage } from '../../lib/uploadImage';
 import { supabase } from '../../lib/supabase';
+import { initiatePaystackPayment, verifyPaystackPayment, generateReference } from '../../lib/paystack';
 
 const STEPS = ['Client Type', 'Location', 'Business Info', 'Extra Details', 'Payment & Submit'];
 
@@ -145,8 +146,45 @@ export default function RegisterScreen() {
   const [clientPassword, setClientPassword] = useState('');
   const [clientPasswordConfirm, setClientPasswordConfirm] = useState('');
 
+  // Paystack
+  const [paystackRef, setPaystackRef] = useState('');
+  const [paystackLoading, setPaystackLoading] = useState(false);
+  const [paystackError, setPaystackError] = useState('');
+
   const PROPERTY_CAT_IDS = ['house-building', 'property-agent', 'real-estate', 'rental'];
   const isPropertyClient = selectedCats.some(c => PROPERTY_CAT_IDS.includes(c));
+
+  const totalAmountNGN = paymentBand * duration;
+
+  async function handlePayWithPaystack() {
+    if (!email.trim()) {
+      setPaystackError('Please enter the client email address (Step 2) before paying with Paystack.');
+      return;
+    }
+    setPaystackError('');
+    setPaystackLoading(true);
+    const ref = generateReference();
+    try {
+      await initiatePaystackPayment({
+        email: email.trim(),
+        amountNGN: totalAmountNGN,
+        reference: ref,
+        businessName: businessName.trim(),
+        phone: phone.trim(),
+        onSuccess: async (paidRef) => {
+          setPaystackRef(paidRef);
+          setPaystackLoading(false);
+        },
+        onCancel: () => {
+          setPaystackLoading(false);
+          setPaystackError('Payment was cancelled.');
+        },
+      });
+    } catch (e: any) {
+      setPaystackLoading(false);
+      setPaystackError(e.message ?? 'Payment failed. Please try again.');
+    }
+  }
 
   function addShelfItem() {
     if (!newItemName.trim() || !newItemPrice.trim()) return;
@@ -253,6 +291,13 @@ export default function RegisterScreen() {
 
   async function handleSubmit() {
     if (!validateStep()) return;
+
+    // Require Paystack payment to be completed before submitting
+    if (paymentMethod === 'paystack' && paymentBand > 0 && !paystackRef) {
+      setPaystackError('Please complete payment with Paystack before submitting.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       setSubmitStatus('Uploading photos…');
@@ -308,6 +353,7 @@ export default function RegisterScreen() {
         duration,
         paymentMethod,
         acceptedTerms,
+        referral: paystackRef ? `Paystack:${paystackRef}` : (referral || undefined),
         registeredBy: agentCode,
         categories: selectedCats,
         shelfItems: [
@@ -746,12 +792,52 @@ export default function RegisterScreen() {
                 />
               </FieldRow>
 
+              {/* Amount summary */}
+              {paymentBand > 0 && (
+                <View style={styles.amountBox}>
+                  <Text style={styles.amountLabel}>Total Amount</Text>
+                  <Text style={styles.amountValue}>₦{totalAmountNGN.toLocaleString()}</Text>
+                  <Text style={styles.amountSub}>₦{paymentBand.toLocaleString()} × {duration} month{duration > 1 ? 's' : ''}</Text>
+                </View>
+              )}
+
               <View style={styles.payNote}>
                 <Ionicons name="information-circle-outline" size={16} color={Colors.info} />
                 <Text style={styles.payNoteText}>
-                  All payments are done via online transfer. The client must include their special City Hup ID number in the payment description.
+                  For Paystack, click "Pay with Paystack" below to complete payment before submitting. For other methods, upload proof of payment.
                 </Text>
               </View>
+
+              {/* Paystack pay button */}
+              {paymentMethod === 'paystack' && (
+                <View style={styles.paystackSection}>
+                  {paystackRef ? (
+                    <View style={styles.paystackSuccess}>
+                      <Ionicons name="checkmark-circle" size={22} color={Colors.success} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.paystackSuccessText}>Payment confirmed!</Text>
+                        <Text style={styles.paystackRef}>Ref: {paystackRef}</Text>
+                      </View>
+                    </View>
+                  ) : (
+                    <>
+                      <TouchableOpacity
+                        style={[styles.paystackBtn, paystackLoading && { opacity: 0.6 }]}
+                        onPress={handlePayWithPaystack}
+                        disabled={paystackLoading || paymentBand === 0}
+                      >
+                        <Ionicons name="card-outline" size={18} color={Colors.white} />
+                        <Text style={styles.paystackBtnText}>
+                          {paystackLoading ? 'Opening Paystack…' : `Pay ₦${totalAmountNGN.toLocaleString()} with Paystack`}
+                        </Text>
+                      </TouchableOpacity>
+                      {paystackError ? (
+                        <Text style={styles.paystackError}>{paystackError}</Text>
+                      ) : null}
+                    </>
+                  )}
+                </View>
+              )}
 
               <FieldRow label="Payment Proof / Receipt">
                 <ImageUploader
@@ -932,6 +1018,28 @@ const styles = StyleSheet.create({
     borderRadius: 8, padding: 10, marginBottom: 14,
   },
   payNoteText: { flex: 1, fontSize: 12, color: Colors.info, lineHeight: 17 },
+
+  amountBox: {
+    backgroundColor: Colors.primaryLight, borderRadius: 12, padding: 16,
+    alignItems: 'center', marginBottom: 14, borderWidth: 1, borderColor: Colors.primary + '40',
+  },
+  amountLabel: { fontSize: 12, color: Colors.primary, fontWeight: '600', textTransform: 'uppercase' },
+  amountValue: { fontSize: 32, fontWeight: '900', color: Colors.primary, marginVertical: 4 },
+  amountSub:   { fontSize: 12, color: Colors.textMedium },
+
+  paystackSection: { marginBottom: 14 },
+  paystackBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    backgroundColor: '#0BA4DB', borderRadius: 12, paddingVertical: 16,
+  },
+  paystackBtnText: { color: Colors.white, fontWeight: '800', fontSize: 15 },
+  paystackError:   { color: Colors.danger, fontSize: 12, marginTop: 8, textAlign: 'center' },
+  paystackSuccess: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: '#E8F5E9', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: Colors.success,
+  },
+  paystackSuccessText: { fontWeight: '700', color: Colors.success, fontSize: 14 },
+  paystackRef: { fontSize: 11, color: Colors.textMuted, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
 
   termsRow: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 10,
