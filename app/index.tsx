@@ -68,7 +68,7 @@ export default function HomeScreen() {
               </Text>
               <Text style={styles.infoItem}>
                 <Text style={styles.infoLabel}>🏢 List Your Business:</Text>
-                {' '}Businesses can register by tapping "List Business" in the top menu. Listing requires a one-time fee.
+                {' '}Businesses can register by tapping "List Business" in the top menu.
               </Text>
               <Text style={styles.infoItem}>
                 <Text style={styles.infoLabel}>🛡️ Ground Norms:</Text>
@@ -92,9 +92,8 @@ export default function HomeScreen() {
       <ScrollView ref={scrollRef} style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90 }}>
         {/* Hero */}
         <View style={styles.hero}>
-          <Text style={styles.heroTitle}>Locate Service Providers &</Text>
-          <Text style={styles.heroTitle2}>Essential Goods in Your Neighborhood</Text>
-          <Text style={styles.heroSub}>West Africa's trusted local directory — find professional skill workers / artisans, stores, goods, schools, properties & more.</Text>
+          <Text style={styles.heroTitle}>West Africa's Trusted Local Directory.</Text>
+          <Text style={styles.heroSub}>Find Professionals, Skilled Workers / Artisans, Spare Parts, Property, Stores, Goods and more.</Text>
           <View style={styles.heroCtas}>
             <TouchableOpacity style={styles.heroBtnPrimary} onPress={() => router.push('/browse')}>
               <Ionicons name="grid-outline" size={16} color={Colors.white} />
@@ -311,8 +310,7 @@ const styles = StyleSheet.create({
     paddingTop: 28,
     paddingBottom: 32,
   },
-  heroTitle: { fontSize: 22, fontWeight: '800', color: Colors.white, lineHeight: 28 },
-  heroTitle2: { fontSize: 22, fontWeight: '800', color: Colors.gold, lineHeight: 28, marginBottom: 8 },
+  heroTitle: { fontSize: 22, fontWeight: '800', color: Colors.white, lineHeight: 28, marginBottom: 8 },
   heroSub: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginBottom: 20, lineHeight: 19 },
   heroCtas: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   heroBtnPrimary: {
