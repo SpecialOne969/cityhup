@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
-import { getLiveServiceCategories, getLiveGoodsCategories } from '../../constants/categories';
+import { CATEGORIES } from '../../constants/categories';
 import { useAppStore } from '../../store/useAppStore';
 import Header from '../../components/Header';
 import CategoryCard from '../../components/CategoryCard';
@@ -12,12 +12,20 @@ export default function BrowseScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<'services' | 'goods'>('services');
   const clients = useAppStore(s => s.clients);
+  const storeCategories = useAppStore(s => s.categories);
+  const categoriesLoaded = useAppStore(s => s.categoriesLoaded);
+  const loadCategories = useAppStore(s => s.loadCategories);
+
+  useEffect(() => {
+    if (!categoriesLoaded) loadCategories();
+  }, []);
 
   function countForCategory(catId: string) {
     return clients.filter(c => c.status === 'approved' && c.categories.includes(catId)).length;
   }
 
-  const displayCats = tab === 'services' ? getLiveServiceCategories() : getLiveGoodsCategories();
+  const allCats = storeCategories.length > 0 ? storeCategories : CATEGORIES;
+  const displayCats = allCats.filter(c => c.section === tab && c.isActive !== false);
 
   return (
     <View style={styles.root}>

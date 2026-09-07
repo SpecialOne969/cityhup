@@ -6,7 +6,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
-import { getLiveCategories, getLiveServiceCategories, getLiveGoodsCategories } from '../constants/categories';
+import { CATEGORIES } from '../constants/categories';
 import { useAppStore } from '../store/useAppStore';
 import Header from '../components/Header';
 import AdBanner from '../components/AdBanner';
@@ -25,10 +25,18 @@ export default function HomeScreen() {
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const clients = useAppStore(s => s.clients);
+  const storeCategories = useAppStore(s => s.categories);
+  const categoriesLoaded = useAppStore(s => s.categoriesLoaded);
+  const loadCategories = useAppStore(s => s.loadCategories);
   const approvedClients = clients.filter(c => c.status === 'approved');
   const [infoVisible, setInfoVisible] = useState(false);
 
+  const allCats = storeCategories.length > 0 ? storeCategories : CATEGORIES;
+  const serviceCategories = allCats.filter(c => c.section === 'services' && c.isActive !== false);
+  const goodsCategories = allCats.filter(c => c.section === 'goods' && c.isActive !== false);
+
   useEffect(() => {
+    if (!categoriesLoaded) loadCategories();
     if (typeof localStorage !== 'undefined' && !localStorage.getItem('ch_info_seen')) {
       setInfoVisible(true);
     }
@@ -113,7 +121,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
             <TouchableOpacity style={styles.statChip} onPress={() => router.push('/browse')}>
               <Ionicons name="grid-outline" size={14} color={Colors.primary} />
-              <Text style={styles.statText}>{getLiveCategories().length} Categories</Text>
+              <Text style={styles.statText}>{allCats.length} Categories</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.statChip}
@@ -177,7 +185,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScroll}>
-            {getLiveServiceCategories().slice(0, 10).map(cat => (
+            {serviceCategories.slice(0, 10).map(cat => (
               <TouchableOpacity
                 key={cat.id}
                 style={styles.serviceChip}
@@ -201,7 +209,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScroll}>
-            {getLiveGoodsCategories().slice(0, 10).map(cat => (
+            {goodsCategories.slice(0, 10).map(cat => (
               <TouchableOpacity
                 key={cat.id}
                 style={styles.serviceChip}
