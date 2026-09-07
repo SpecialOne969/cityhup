@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TextInput, TouchableOpacity, Platform, ScrollView,
+  View, Text, StyleSheet, TextInput, TouchableOpacity, Platform, ScrollView, Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { useAppStore } from '../store/useAppStore';
 
+type Mode = 'login' | 'forgot';
+
 export default function CustomerLoginScreen() {
   const router = useRouter();
   const customerLogin = useAppStore(s => s.customerLogin);
   const currentCustomer = useAppStore(s => s.currentCustomer);
 
+  const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -46,10 +49,13 @@ export default function CustomerLoginScreen() {
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => mode === 'forgot' ? setMode('login') : router.back()}
+          style={styles.backBtn}
+        >
           <Ionicons name="arrow-back" size={20} color={Colors.white} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Sign In</Text>
+        <Text style={styles.headerTitle}>{mode === 'forgot' ? 'Forgot Password' : 'Sign In'}</Text>
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
@@ -58,61 +64,103 @@ export default function CustomerLoginScreen() {
             <Ionicons name="person-circle-outline" size={44} color={Colors.primary} />
           </View>
           <Text style={styles.logoText}>CITY<Text style={{ color: Colors.accent }}>HUP</Text></Text>
-          <Text style={styles.logoSub}>Welcome back</Text>
+          <Text style={styles.logoSub}>{mode === 'forgot' ? 'Password Recovery' : 'Welcome back'}</Text>
         </View>
 
-        {/* Tab row */}
-        <View style={styles.tabRow}>
-          <TouchableOpacity style={styles.tabBtn} onPress={() => router.replace('/customer-register')}>
-            <Text style={styles.tabText}>Create Account</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.tabBtn, styles.tabBtnActive]}>
-            <Text style={styles.tabTextActive}>Sign In</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Customer Sign In</Text>
-          <Text style={styles.cardSub}>Sign in to access your personalized service directory.</Text>
-
-          <Text style={styles.label}>Email Address</Text>
-          <TextInput
-            style={styles.input}
-            value={email} onChangeText={setEmail}
-            placeholder="you@email.com"
-            placeholderTextColor={Colors.textMuted}
-            keyboardType="email-address" autoCapitalize="none"
-          />
-
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.pwRow}>
-            <TextInput
-              style={[styles.input, { flex: 1, borderWidth: 0, marginBottom: 0 }]}
-              value={password} onChangeText={setPassword}
-              placeholder="Your password"
-              placeholderTextColor={Colors.textMuted}
-              secureTextEntry={!showPw}
-            />
-            <TouchableOpacity onPress={() => setShowPw(v => !v)} style={styles.pwEye}>
-              <Ionicons name={showPw ? 'eye-off' : 'eye'} size={18} color={Colors.textLight} />
+        {/* Tab row — only in login mode */}
+        {mode === 'login' && (
+          <View style={styles.tabRow}>
+            <TouchableOpacity style={styles.tabBtn} onPress={() => router.replace('/customer-register')}>
+              <Text style={styles.tabText}>Create Account</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.tabBtn, styles.tabBtnActive]}>
+              <Text style={styles.tabTextActive}>Sign In</Text>
             </TouchableOpacity>
           </View>
+        )}
 
-          {errorMsg ? (
-            <View style={styles.errorBox}>
-              <Ionicons name="alert-circle" size={16} color={Colors.danger} />
-              <Text style={styles.errorText}>{errorMsg}</Text>
+        {mode === 'login' ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Customer Sign In</Text>
+            <Text style={styles.cardSub}>Sign in to access your personalized service directory.</Text>
+
+            <Text style={styles.label}>Email Address</Text>
+            <TextInput
+              style={styles.input}
+              value={email} onChangeText={v => { setEmail(v); setErrorMsg(''); }}
+              placeholder="you@email.com"
+              placeholderTextColor={Colors.textMuted}
+              keyboardType="email-address" autoCapitalize="none"
+            />
+
+            <Text style={styles.label}>Password</Text>
+            <View style={styles.pwRow}>
+              <TextInput
+                style={[styles.input, { flex: 1, borderWidth: 0, marginBottom: 0 }]}
+                value={password} onChangeText={v => { setPassword(v); setErrorMsg(''); }}
+                placeholder="Your password"
+                placeholderTextColor={Colors.textMuted}
+                secureTextEntry={!showPw}
+                onSubmitEditing={handleLogin}
+              />
+              <TouchableOpacity onPress={() => setShowPw(v => !v)} style={styles.pwEye}>
+                <Ionicons name={showPw ? 'eye-off' : 'eye'} size={18} color={Colors.textLight} />
+              </TouchableOpacity>
             </View>
-          ) : null}
 
-          <TouchableOpacity
-            style={[styles.loginBtn, loading && { opacity: 0.6 }]}
-            onPress={handleLogin} disabled={loading}
-          >
-            <Ionicons name="log-in" size={18} color={Colors.white} />
-            <Text style={styles.loginBtnText}>{loading ? 'Signing in…' : 'Sign In'}</Text>
-          </TouchableOpacity>
-        </View>
+            {errorMsg ? (
+              <View style={styles.errorBox}>
+                <Ionicons name="alert-circle" size={16} color={Colors.danger} />
+                <Text style={styles.errorText}>{errorMsg}</Text>
+              </View>
+            ) : null}
+
+            <TouchableOpacity
+              style={[styles.loginBtn, loading && { opacity: 0.6 }]}
+              onPress={handleLogin} disabled={loading}
+            >
+              <Ionicons name="log-in" size={18} color={Colors.white} />
+              <Text style={styles.loginBtnText}>{loading ? 'Signing in…' : 'Sign In'}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.forgotLink} onPress={() => setMode('forgot')}>
+              <Text style={styles.forgotLinkText}>Forgot Password?</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          /* ── FORGOT PASSWORD ── */
+          <View style={styles.card}>
+            <View style={styles.forgotIconWrap}>
+              <Ionicons name="lock-open-outline" size={40} color={Colors.primary} />
+            </View>
+            <Text style={styles.cardTitle}>Forgot Password?</Text>
+            <Text style={styles.cardSub}>
+              Customer passwords are stored securely using end-to-end encryption and cannot be reset automatically.
+              {'\n\n'}
+              To reset your password, please contact CityHup support with the email address linked to your account.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.contactBtn}
+              onPress={() => Linking.openURL('mailto:support@cityhup.com?subject=Password Reset Request')}
+            >
+              <Ionicons name="mail-outline" size={18} color={Colors.white} />
+              <Text style={styles.contactBtnText}>Email Support</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.contactBtn, { backgroundColor: '#25D366', marginTop: 10 }]}
+              onPress={() => Linking.openURL('https://wa.me/2348000000000?text=Hello%2C%20I%20need%20help%20resetting%20my%20CityHup%20customer%20password.')}
+            >
+              <Ionicons name="logo-whatsapp" size={18} color={Colors.white} />
+              <Text style={styles.contactBtnText}>WhatsApp Support</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.backToLoginLink} onPress={() => setMode('login')}>
+              <Text style={styles.backToLoginText}>← Back to Sign In</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={styles.altSection}>
           <Text style={styles.altText}>Are you a service provider?</Text>
@@ -195,6 +243,18 @@ const styles = StyleSheet.create({
     gap: 8, backgroundColor: Colors.primary, borderRadius: 12, paddingVertical: 15,
   },
   loginBtnText: { color: Colors.white, fontWeight: '800', fontSize: 15 },
+
+  forgotLink: { alignSelf: 'center', marginTop: 14, paddingVertical: 4 },
+  forgotLinkText: { fontSize: 13, color: Colors.primary, fontWeight: '600' },
+
+  forgotIconWrap: { alignItems: 'center', marginBottom: 12 },
+  contactBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, backgroundColor: Colors.primary, borderRadius: 12, paddingVertical: 14, marginTop: 6,
+  },
+  contactBtnText: { color: Colors.white, fontWeight: '700', fontSize: 14 },
+  backToLoginLink: { alignSelf: 'center', marginTop: 16 },
+  backToLoginText: { fontSize: 13, color: Colors.primary, fontWeight: '600' },
 
   altSection: { alignItems: 'center', marginTop: 20, gap: 8 },
   altText: { fontSize: 13, color: Colors.textMedium },
