@@ -808,6 +808,39 @@ export default function RegisterScreen() {
                 </Text>
               </View>
 
+              {/* Bank Transfer details */}
+              {paymentMethod === 'bank_transfer' && (
+                <View style={styles.bankCard}>
+                  <View style={styles.bankCardHeader}>
+                    <Ionicons name="business-outline" size={18} color={Colors.primary} />
+                    <Text style={styles.bankCardTitle}>Bank Transfer Details</Text>
+                  </View>
+                  <View style={styles.bankRow}>
+                    <Text style={styles.bankLabel}>Bank</Text>
+                    <Text style={styles.bankValue}>First Bank of Nigeria</Text>
+                  </View>
+                  <View style={styles.bankRow}>
+                    <Text style={styles.bankLabel}>Account Name</Text>
+                    <Text style={styles.bankValue}>City Hup Ltd</Text>
+                  </View>
+                  <View style={styles.bankRow}>
+                    <Text style={styles.bankLabel}>Account Number</Text>
+                    <Text style={[styles.bankValue, styles.bankAccNum]}>2049027204</Text>
+                  </View>
+                  {paymentBand > 0 && (
+                    <View style={styles.bankRow}>
+                      <Text style={styles.bankLabel}>Amount</Text>
+                      <Text style={[styles.bankValue, { color: Colors.primary, fontWeight: '800' }]}>
+                        ₦{totalAmountNGN.toLocaleString()}
+                      </Text>
+                    </View>
+                  )}
+                  <Text style={styles.bankNote}>
+                    Include the client's business name as the transfer description. Upload your receipt below after payment.
+                  </Text>
+                </View>
+              )}
+
               {/* Paystack pay button */}
               {paymentMethod === 'paystack' && (
                 <View style={styles.paystackSection}>
@@ -839,13 +872,19 @@ export default function RegisterScreen() {
                 </View>
               )}
 
-              <FieldRow label="Payment Proof / Receipt">
+              <FieldRow
+                label={paymentMethod === 'bank_transfer' ? 'Upload Transfer Receipt *' : 'Payment Proof / Receipt'}
+              >
                 <ImageUploader
                   images={paymentProof}
                   onChange={setPaymentProof}
                   maxImages={1}
                   uploading={submitting}
-                  note="Upload a screenshot or photo of the payment receipt (optional at registration)."
+                  note={
+                    paymentMethod === 'bank_transfer'
+                      ? 'Upload a screenshot or photo of your bank transfer receipt.'
+                      : 'Upload a screenshot or photo of the payment receipt (optional).'
+                  }
                 />
               </FieldRow>
 
@@ -1026,6 +1065,21 @@ const styles = StyleSheet.create({
   amountLabel: { fontSize: 12, color: Colors.primary, fontWeight: '600', textTransform: 'uppercase' },
   amountValue: { fontSize: 32, fontWeight: '900', color: Colors.primary, marginVertical: 4 },
   amountSub:   { fontSize: 12, color: Colors.textMedium },
+
+  bankCard: {
+    backgroundColor: '#F0F7FF', borderRadius: 12, padding: 16, marginBottom: 14,
+    borderWidth: 1, borderColor: Colors.primary + '30',
+  },
+  bankCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  bankCardTitle:  { fontSize: 14, fontWeight: '800', color: Colors.primary },
+  bankRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
+  },
+  bankLabel: { fontSize: 12, color: Colors.textMedium, fontWeight: '500' },
+  bankValue: { fontSize: 13, color: Colors.textDark, fontWeight: '600', flexShrink: 1, textAlign: 'right' },
+  bankAccNum: { fontSize: 18, fontWeight: '900', color: Colors.textDark, letterSpacing: 1.5 },
+  bankNote: { fontSize: 11, color: Colors.textLight, marginTop: 10, lineHeight: 16 },
 
   paystackSection: { marginBottom: 14 },
   paystackBtn: {

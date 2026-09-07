@@ -14,9 +14,10 @@ export const DURATIONS = Array.from({ length: 12 }, (_, i) => ({
 }));
 
 export const PAYMENT_METHODS = [
+  { label: 'Paystack (Online)', value: 'paystack' },
+  { label: 'Bank Transfer', value: 'bank_transfer' },
   { label: 'Interswitch', value: 'interswitch' },
   { label: 'Remita', value: 'remita' },
-  { label: 'Paystack', value: 'paystack' },
 ] as const;
 
 export const MEANS_OF_ID = [
