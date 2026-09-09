@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { useAppStore } from '../store/useAppStore';
-import { getCategoryById } from '../constants/categories';
+import { CATEGORIES } from '../constants/categories';
 import ImageUploader from '../components/ImageUploader';
 import { uploadImages } from '../lib/uploadImage';
 
@@ -22,9 +22,14 @@ export default function ClientDashboard() {
   const currentClient = useAppStore(s => s.currentClient);
   const clientLogout = useAppStore(s => s.clientLogout);
   const updateClientProfile = useAppStore(s => s.updateClientProfile);
+  const storeCategories = useAppStore(s => s.categories);
+  const categoriesLoaded = useAppStore(s => s.categoriesLoaded);
+  const loadCategories = useAppStore(s => s.loadCategories);
+  const allCats = storeCategories.length > 0 ? storeCategories : CATEGORIES;
 
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Editable fields
   const [phone, setPhone] = useState(currentClient?.phone ?? '');
@@ -48,6 +53,10 @@ export default function ClientDashboard() {
       router.replace('/client-login' as any);
     }
   }, [currentClient]);
+
+  useEffect(() => {
+    if (!categoriesLoaded) loadCategories();
+  }, []);
 
   if (!currentClient) return null;
 
@@ -81,9 +90,10 @@ export default function ClientDashboard() {
         shelfItems,
       });
       setEditMode(false);
-      Alert.alert('Saved', 'Your profile has been updated.');
+      setSaveMsg({ type: 'success', text: 'Profile updated successfully.' });
+      setTimeout(() => setSaveMsg(null), 3000);
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'Could not save changes');
+      setSaveMsg({ type: 'error', text: e.message ?? 'Could not save changes. Try again.' });
     } finally {
       setSaving(false);
       setUploadingPhotos(false);
@@ -102,7 +112,7 @@ export default function ClientDashboard() {
     setNewItemName(''); setNewItemPrice(''); setNewItemDesc(''); setNewItemOffer(false);
   }
 
-  const cats = currentClient.categories.map(id => getCategoryById(id)).filter(Boolean);
+  const cats = currentClient.categories.map(id => allCats.find(c => c.id === id)).filter(Boolean);
 
   return (
     <View style={styles.root}>
@@ -119,6 +129,13 @@ export default function ClientDashboard() {
           <Ionicons name="log-out-outline" size={22} color={Colors.white} />
         </TouchableOpacity>
       </View>
+
+      {saveMsg && (
+        <View style={[styles.saveMsgBanner, { backgroundColor: saveMsg.type === 'success' ? Colors.successLight : Colors.dangerLight, borderColor: saveMsg.type === 'success' ? Colors.success : Colors.danger }]}>
+          <Ionicons name={saveMsg.type === 'success' ? 'checkmark-circle' : 'alert-circle'} size={16} color={saveMsg.type === 'success' ? Colors.success : Colors.danger} />
+          <Text style={[styles.saveMsgText, { color: saveMsg.type === 'success' ? Colors.success : Colors.danger }]}>{saveMsg.text}</Text>
+        </View>
+      )}
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* Status card */}
@@ -321,6 +338,8 @@ const styles = StyleSheet.create({
   },
   headerBack: { padding: 4 },
   headerTitle: { fontSize: 15, fontWeight: '800', color: Colors.white },
+  saveMsgBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 0, padding: 12, paddingHorizontal: 16 },
+  saveMsgText: { flex: 1, fontSize: 13, fontWeight: '600' },
   headerSub: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 1 },
   scroll: { flex: 1 },
 

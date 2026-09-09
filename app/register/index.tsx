@@ -1,14 +1,13 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
-  Alert, Platform,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { COUNTRIES, STATES, getLgasByState } from '../../constants/locations';
 import { PAYMENT_BANDS, DURATIONS, PAYMENT_METHODS, MEANS_OF_ID, NATURE_OF_BIZ_OPTIONS } from '../../constants/subscriptions';
-import { getLiveCategories } from '../../constants/categories';
+import { CATEGORIES } from '../../constants/categories';
 import { useAppStore } from '../../store/useAppStore';
 import { ClientType, PaymentMethod, MeansOfId } from '../../types';
 import ImageUploader from '../../components/ImageUploader';
@@ -82,6 +81,16 @@ function SelectPicker({ options, value, onChange, placeholder }: {
 export default function RegisterScreen() {
   const router = useRouter();
   const addClient = useAppStore(s => s.addClient);
+  const storeCategories = useAppStore(s => s.categories);
+  const categoriesLoaded = useAppStore(s => s.categoriesLoaded);
+  const loadCategories = useAppStore(s => s.loadCategories);
+  const allCats = storeCategories.length > 0 ? storeCategories : CATEGORIES;
+
+  const [stepError, setStepError] = useState('');
+
+  useEffect(() => {
+    if (!categoriesLoaded) loadCategories();
+  }, []);
 
   const [step, setStep] = useState(0);
   const uploadFolder = useRef(`reg-${Date.now()}-${Math.random().toString(36).slice(2)}`).current;
@@ -224,56 +233,56 @@ export default function RegisterScreen() {
   }
 
   function validateStep(): boolean {
+    setStepError('');
     if (step === 0) {
       const effectiveLga = lga === '__other__' ? customLga.trim() : lga;
       if (!natureOfBiz || !country || !state || !effectiveLga || !city) {
-        Alert.alert('Required fields', 'Please fill all required fields (Nature of Biz, Country, State, LGA, City)');
+        setStepError('Please fill all required fields: Nature of Business, Country, State, LGA, and City.');
         return false;
       }
     }
     if (step === 1) {
       if (!businessName || !address || !email || !phone || !busStop || !landmark || !competence || !profile) {
-        Alert.alert('Required fields', 'Please fill all required fields marked with *');
+        setStepError('Please fill all required fields marked with *.');
         return false;
       }
-      // Phone number validation — 7 to 15 digits, optional leading +
       const cleanPhone = phone.replace(/[\s\-()]/g, '');
       if (!/^\+?\d{7,15}$/.test(cleanPhone)) {
-        Alert.alert('Invalid phone', 'Please enter a valid phone number (7–15 digits).');
+        setStepError('Please enter a valid phone number (7–15 digits).');
         return false;
       }
       if (clientType === 'corporate' && !cacNumber.trim()) {
-        Alert.alert('CAC required', 'CAC Registration Number is required for corporate clients.');
+        setStepError('CAC Registration Number is required for corporate clients.');
         return false;
       }
     }
     if (step === 2) {
       if (!director.trim()) {
-        Alert.alert('Required', 'Director / Person of Responsibility is required.');
+        setStepError('Director / Person of Responsibility is required.');
         return false;
       }
     }
     if (step === 3) {
       if (selectedCats.length === 0) {
-        Alert.alert('Category required', 'Please select at least one category');
+        setStepError('Please select at least one category.');
         return false;
       }
     }
     if (step === 4) {
       if (!acceptedTerms) {
-        Alert.alert('Terms required', 'You must accept the Terms & Conditions');
+        setStepError('You must accept the Terms & Conditions before submitting.');
         return false;
       }
       if (!agentCode) {
-        Alert.alert('Agent Code required', 'Enter your assigned City Hup agent code to submit');
+        setStepError('Enter your assigned City Hup agent code to submit.');
         return false;
       }
       if (clientPassword && clientPassword !== clientPasswordConfirm) {
-        Alert.alert('Password mismatch', 'Client portal passwords do not match');
+        setStepError('Client portal passwords do not match.');
         return false;
       }
       if (clientPassword && clientPassword.length < 6) {
-        Alert.alert('Password too short', 'Password must be at least 6 characters');
+        setStepError('Client portal password must be at least 6 characters.');
         return false;
       }
     }
@@ -282,6 +291,7 @@ export default function RegisterScreen() {
 
   function handleNext() {
     if (!validateStep()) return;
+    setStepError('');
     setStep(s => s + 1);
   }
 
@@ -343,7 +353,6 @@ export default function RegisterScreen() {
         info,
         infoImages: [...uploadedProfileImgs, ...uploadedPortfolioImgs],
         websiteLink,
-        referral,
         director,
         identification: meansOfId
           ? { type: meansOfId as MeansOfId, number: meansOfIdNum, image: uploadedIdImage }
@@ -385,13 +394,10 @@ export default function RegisterScreen() {
           await supabase.auth.signUp({ email, password: clientPassword });
         } catch { /* non-fatal */ }
       }
-      Alert.alert(
-        'Registration Submitted',
-        'The client registration has been submitted for admin approval. The client will become visible once approved.',
-        [{ text: 'OK', onPress: () => router.push('/') }]
-      );
+      setSubmitStatus('Submitted! Awaiting admin approval…');
+      setTimeout(() => router.replace('/'), 2500);
     } catch (err: any) {
-      Alert.alert('Error', err?.message ?? 'Could not submit registration. Check your internet connection and try again.');
+      setStepError(err?.message ?? 'Could not submit. Check your internet connection and try again.');
     } finally {
       setSubmitting(false);
       setSubmitStatus('');
@@ -636,7 +642,7 @@ export default function RegisterScreen() {
               <Text style={styles.stepNote}>Select Business Categories</Text>
               <Text style={styles.stepInfo}>Select all categories that apply to this business.</Text>
 
-              {getLiveCategories().map(cat => (
+              {allCats.map(cat => (
                 <TouchableOpacity
                   key={cat.id}
                   style={[styles.catCheck, selectedCats.includes(cat.id) && styles.catCheckActive]}
@@ -932,9 +938,16 @@ export default function RegisterScreen() {
           )}
         </View>
 
+        {stepError ? (
+          <View style={styles.stepErrorBanner}>
+            <Ionicons name="alert-circle" size={16} color={Colors.danger} />
+            <Text style={styles.stepErrorText}>{stepError}</Text>
+          </View>
+        ) : null}
+
         <View style={styles.navBtns}>
           {step > 0 && (
-            <TouchableOpacity style={styles.prevBtn} onPress={() => setStep(s => s - 1)}>
+            <TouchableOpacity style={styles.prevBtn} onPress={() => { setStepError(''); setStep(s => s - 1); }}>
               <Ionicons name="arrow-back" size={16} color={Colors.primary} />
               <Text style={styles.prevBtnText}>Previous</Text>
             </TouchableOpacity>
@@ -977,6 +990,13 @@ const styles = StyleSheet.create({
     borderRadius: 14, padding: 16,
     borderWidth: 1, borderColor: Colors.borderLight,
   },
+  stepErrorBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.dangerLight, borderWidth: 1, borderColor: Colors.danger + '40',
+    borderRadius: 10, marginHorizontal: 16, marginBottom: 4, padding: 12,
+  },
+  stepErrorText: { flex: 1, fontSize: 13, color: Colors.danger, lineHeight: 18 },
+
   stepNote: { fontSize: 13, fontWeight: '800', color: Colors.primary, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
   stepInfo: { fontSize: 12, color: Colors.textLight, marginBottom: 14, lineHeight: 17 },
   sectionNote: { fontSize: 12, color: Colors.textLight, fontStyle: 'italic', marginTop: 8 },
