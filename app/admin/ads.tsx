@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Platform, Switch,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Switch, Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { useAppStore } from '../../store/useAppStore';
 import { STATES } from '../../constants/locations';
+import ImageUploader from '../../components/ImageUploader';
+import { uploadImage } from '../../lib/uploadImage';
 
 const NIGERIA_STATES = STATES['Nigeria'];
 const AD_COLORS = [
@@ -29,12 +31,15 @@ export default function AdsScreen() {
 
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [formSuccess, setFormSuccess] = useState('');
 
   // Form state
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
   const [bgColor, setBgColor] = useState(Colors.primary);
   const [icon, setIcon] = useState('megaphone');
+  const [adImage, setAdImage] = useState<string[]>([]);
   const [linkType, setLinkType] = useState<'external' | 'client' | 'category'>('external');
   const [linkUrl, setLinkUrl] = useState('');
   const [linkClientId, setLinkClientId] = useState('');
@@ -47,12 +52,22 @@ export default function AdsScreen() {
   }
 
   async function handleCreate() {
-    if (!title.trim()) { Alert.alert('Required', 'Ad title is required'); return; }
+    setFormError('');
+    if (!title.trim()) { setFormError('Ad title is required.'); return; }
     setSaving(true);
     try {
+      let imageUrl: string | undefined;
+      if (adImage.length > 0 && !adImage[0].startsWith('http')) {
+        const ext = (adImage[0].split('.').pop() ?? 'jpg').split('?')[0];
+        imageUrl = await uploadImage(adImage[0], 'ad-images', `ad-${Date.now()}.${ext}`);
+      } else if (adImage.length > 0) {
+        imageUrl = adImage[0];
+      }
+
       await createAd({
         title: title.trim(),
         subtitle: subtitle.trim() || undefined,
+        imageUrl,
         bgColor,
         icon,
         linkType,
@@ -62,11 +77,12 @@ export default function AdsScreen() {
         isActive: true,
         priority: Number(priority) || 0,
       });
-      Alert.alert('Created', 'Ad created and is now live.');
+      setFormSuccess('Ad created and is now live.');
+      setTimeout(() => setFormSuccess(''), 3000);
       setShowForm(false);
       resetForm();
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'Failed to create ad');
+      setFormError(e.message ?? 'Failed to create ad.');
     } finally {
       setSaving(false);
     }
@@ -74,14 +90,12 @@ export default function AdsScreen() {
 
   function resetForm() {
     setTitle(''); setSubtitle(''); setBgColor(Colors.primary); setIcon('megaphone');
-    setLinkType('external'); setLinkUrl(''); setLinkClientId(''); setTargetState(''); setPriority('0');
+    setAdImage([]); setLinkType('external'); setLinkUrl(''); setLinkClientId('');
+    setTargetState(''); setPriority('0'); setFormError('');
   }
 
-  function confirmDelete(id: string, adTitle: string) {
-    Alert.alert('Delete Ad', `Delete "${adTitle}"? This cannot be undone.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteAd(id) },
-    ]);
+  async function handleDelete(id: string) {
+    await deleteAd(id);
   }
 
   return (
@@ -91,12 +105,19 @@ export default function AdsScreen() {
           <Ionicons name="arrow-back" size={20} color={Colors.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Manage Ads</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={() => setShowForm(v => !v)}>
+        <TouchableOpacity style={styles.addBtn} onPress={() => { setShowForm(v => !v); resetForm(); }}>
           <Ionicons name={showForm ? 'close' : 'add'} size={22} color={Colors.white} />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+
+        {formSuccess ? (
+          <View style={styles.successBanner}>
+            <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
+            <Text style={styles.successText}>{formSuccess}</Text>
+          </View>
+        ) : null}
 
         {/* Create form */}
         {showForm && (
@@ -109,6 +130,16 @@ export default function AdsScreen() {
 
             <FieldRow label="Subtitle">
               <TextInput style={styles.input} value={subtitle} onChangeText={setSubtitle} placeholder="Short tagline or description" placeholderTextColor={Colors.textMuted} />
+            </FieldRow>
+
+            <FieldRow label="Ad Image (optional)">
+              <ImageUploader
+                images={adImage}
+                onChange={setAdImage}
+                maxImages={1}
+                uploading={saving}
+                note="Upload a banner image. If provided it will appear as the ad background. Recommended: wide/landscape photo."
+              />
             </FieldRow>
 
             <FieldRow label="Background Color">
@@ -190,14 +221,27 @@ export default function AdsScreen() {
             </FieldRow>
 
             {/* Preview */}
+            <Text style={styles.previewLabel}>Preview</Text>
             <View style={[styles.preview, { backgroundColor: bgColor }]}>
-              <Ionicons name={icon as any} size={28} color="rgba(255,255,255,0.5)" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.previewTitle}>{title || 'Ad Title'}</Text>
-                {subtitle ? <Text style={styles.previewSub}>{subtitle}</Text> : null}
+              {adImage.length > 0 ? (
+                <Image source={{ uri: adImage[0] }} style={styles.previewImg} resizeMode="cover" />
+              ) : null}
+              <View style={styles.previewOverlay}>
+                <Ionicons name={icon as any} size={28} color="rgba(255,255,255,0.5)" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.previewTitle}>{title || 'Ad Title'}</Text>
+                  {subtitle ? <Text style={styles.previewSub}>{subtitle}</Text> : null}
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.6)" />
               </View>
-              <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.6)" />
             </View>
+
+            {formError ? (
+              <View style={styles.errorBanner}>
+                <Ionicons name="alert-circle" size={15} color={Colors.danger} />
+                <Text style={styles.errorText}>{formError}</Text>
+              </View>
+            ) : null}
 
             <TouchableOpacity style={[styles.createBtn, saving && { opacity: 0.6 }]} onPress={handleCreate} disabled={saving}>
               <Ionicons name="checkmark-circle" size={18} color={Colors.white} />
@@ -220,14 +264,18 @@ export default function AdsScreen() {
 
         {ads.map(ad => (
           <View key={ad.id} style={styles.adRow}>
-            <View style={[styles.adColorDot, { backgroundColor: ad.bgColor }]}>
-              <Ionicons name={ad.icon as any} size={16} color={Colors.white} />
-            </View>
+            {ad.imageUrl ? (
+              <Image source={{ uri: ad.imageUrl }} style={styles.adThumb} resizeMode="cover" />
+            ) : (
+              <View style={[styles.adColorDot, { backgroundColor: ad.bgColor }]}>
+                <Ionicons name={ad.icon as any} size={16} color={Colors.white} />
+              </View>
+            )}
             <View style={styles.adInfo}>
               <Text style={styles.adTitle}>{ad.title}</Text>
               <Text style={styles.adMeta}>
-                {ad.targetState ? `📍 ${ad.targetState}` : '🌍 All states'} •{' '}
-                Priority: {ad.priority}
+                {ad.targetState ? `📍 ${ad.targetState}` : '🌍 All states'} · Priority: {ad.priority}
+                {ad.imageUrl ? ' · 🖼 Image' : ''}
               </Text>
             </View>
             <Switch
@@ -236,7 +284,7 @@ export default function AdsScreen() {
               trackColor={{ true: Colors.success, false: Colors.border }}
               thumbColor={Colors.white}
             />
-            <TouchableOpacity style={styles.deleteBtn} onPress={() => confirmDelete(ad.id, ad.title)}>
+            <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(ad.id)}>
               <Ionicons name="trash-outline" size={18} color={Colors.danger} />
             </TouchableOpacity>
           </View>
@@ -269,6 +317,19 @@ const styles = StyleSheet.create({
   headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: Colors.white },
   addBtn: { padding: 4 },
   scroll: { flex: 1 },
+
+  successBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.successLight, borderRadius: 8,
+    margin: 12, padding: 12,
+  },
+  successText: { flex: 1, fontSize: 13, color: Colors.success, fontWeight: '600' },
+  errorBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.dangerLight, borderRadius: 8,
+    padding: 10, marginBottom: 10,
+  },
+  errorText: { flex: 1, fontSize: 13, color: Colors.danger },
 
   formCard: {
     backgroundColor: Colors.bgCard, margin: 12,
@@ -311,12 +372,22 @@ const styles = StyleSheet.create({
   stateChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   stateChipText: { fontSize: 12, color: Colors.textMedium },
   stateChipTextActive: { color: Colors.white, fontWeight: '600' },
+
+  previewLabel: { fontSize: 11, fontWeight: '600', color: Colors.textMedium, marginBottom: 6 },
   preview: {
+    borderRadius: 10, marginBottom: 14, overflow: 'hidden', minHeight: 80,
+  },
+  previewImg: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.55,
+  },
+  previewOverlay: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    padding: 14, borderRadius: 10, marginBottom: 14,
+    padding: 14,
   },
   previewTitle: { color: Colors.white, fontSize: 13, fontWeight: '700' },
   previewSub: { color: 'rgba(255,255,255,0.8)', fontSize: 11, marginTop: 2 },
+
   createBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, backgroundColor: Colors.success, borderRadius: 12, paddingVertical: 14,
@@ -335,8 +406,12 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.borderLight,
   },
   adColorDot: {
-    width: 36, height: 36, borderRadius: 18,
+    width: 40, height: 40, borderRadius: 8,
     alignItems: 'center', justifyContent: 'center',
+  },
+  adThumb: {
+    width: 40, height: 40, borderRadius: 8,
+    backgroundColor: Colors.borderLight,
   },
   adInfo: { flex: 1 },
   adTitle: { fontSize: 13, fontWeight: '700', color: Colors.textDark, marginBottom: 3 },

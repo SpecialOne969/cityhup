@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Linking,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Linking, Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,7 +26,7 @@ export default function AdBanner() {
   const [activeIndex, setActiveIndex] = useState(0);
 
   const displayAds = storeAds.length > 0
-    ? storeAds.map(a => ({ id: a.id, title: a.title, subtitle: a.subtitle ?? '', bgColor: a.bgColor, icon: a.icon, linkType: a.linkType, linkUrl: a.linkUrl, linkClientId: a.linkClientId }))
+    ? storeAds.map(a => ({ id: a.id, title: a.title, subtitle: a.subtitle ?? '', bgColor: a.bgColor, icon: a.icon, imageUrl: a.imageUrl, linkType: a.linkType, linkUrl: a.linkUrl, linkClientId: a.linkClientId }))
     : FALLBACK_ADS;
 
   useEffect(() => {
@@ -80,12 +80,21 @@ export default function AdBanner() {
             activeOpacity={0.9}
             onPress={() => handleAdPress(ad)}
           >
-            <Ionicons name={ad.icon as any} size={32} color="rgba(255,255,255,0.5)" />
-            <View style={styles.adText}>
-              <Text style={styles.adTitle}>{ad.title}</Text>
-              {ad.subtitle ? <Text style={styles.adSub}>{ad.subtitle}</Text> : null}
+            {(ad as any).imageUrl ? (
+              <Image
+                source={{ uri: (ad as any).imageUrl }}
+                style={styles.adBgImage}
+                resizeMode="cover"
+              />
+            ) : null}
+            <View style={styles.adContent}>
+              <Ionicons name={ad.icon as any} size={32} color="rgba(255,255,255,0.5)" />
+              <View style={styles.adText}>
+                <Text style={styles.adTitle}>{ad.title}</Text>
+                {ad.subtitle ? <Text style={styles.adSub}>{ad.subtitle}</Text> : null}
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
             </View>
-            <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -109,8 +118,15 @@ const styles = StyleSheet.create({
   trafficCount: { fontSize: 11, color: Colors.primary, fontWeight: '700' },
   carousel: {},
   adCard: {
+    marginHorizontal: 16, borderRadius: 12, minHeight: 80, overflow: 'hidden',
+  },
+  adBgImage: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.45,
+  },
+  adContent: {
     flexDirection: 'row', alignItems: 'center',
-    padding: 16, marginHorizontal: 16, borderRadius: 12, gap: 12, minHeight: 80,
+    padding: 16, gap: 12,
   },
   adText: { flex: 1 },
   adTitle: { color: Colors.white, fontSize: 14, fontWeight: '700', marginBottom: 3 },
