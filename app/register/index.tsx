@@ -163,8 +163,6 @@ export default function RegisterScreen() {
   const PROPERTY_CAT_IDS = ['house-building', 'property-agent', 'real-estate', 'rental'];
   const isPropertyClient = selectedCats.some(c => PROPERTY_CAT_IDS.includes(c));
 
-  const totalAmountNGN = paymentBand * duration;
-
   async function handlePayWithPaystack() {
     if (!email.trim()) {
       setPaystackError('Please enter the client email address (Step 2) before paying with Paystack.');
@@ -222,6 +220,8 @@ export default function RegisterScreen() {
   const [duration, setDuration] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('paystack');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+
+  const totalAmountNGN = paymentBand * duration;
 
   // Agent code
   const [agentCode, setAgentCode] = useState('');
