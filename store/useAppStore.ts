@@ -287,7 +287,11 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   addClient: async (data) => {
     const clientCode = generateClientCode(data.state);
-    // Sanitize free-text fields before storing
+    const registeredAt = new Date().toISOString();
+    // Generate ID client-side so we don't need .select() after insert.
+    // Doing .select() on a pending row fails RLS for anon users
+    // (only approved rows pass the public SELECT policy).
+    const id = `clt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const row = clientToDb({
       ...data,
       businessName: sanitizeText(data.businessName ?? '', 200),
@@ -297,18 +301,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       address:      sanitizeText(data.address ?? '', 300),
       clientCode,
       status: 'pending',
-      registeredAt: new Date().toISOString(),
+      registeredAt,
     });
+    row.id = id;
 
-    const { data: inserted, error } = await supabase
-      .from('clients')
-      .insert(row)
-      .select()
-      .single();
+    const { error } = await supabase.from('clients').insert(row);
+    if (error) throw new Error(error?.message ?? 'Registration failed');
 
-    if (error || !inserted) throw new Error(error?.message ?? 'Registration failed');
-
-    const client = dbToClient(inserted);
+    const client = dbToClient({ ...row });
     set(state => ({ clients: [client, ...state.clients] }));
     return client;
   },

@@ -228,4 +228,18 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'clients' AND column_name = 'price_unit') THEN
     ALTER TABLE clients ADD COLUMN price_unit TEXT;
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'clients' AND column_name = 'is_premium') THEN
+    ALTER TABLE clients ADD COLUMN is_premium BOOLEAN DEFAULT false;
+  END IF;
+END $$;
+
+-- Fix RLS INSERT policy: ensure anon role can insert (re-create idempotently)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'clients' AND policyname = 'public_insert_client'
+  ) THEN
+    EXECUTE 'CREATE POLICY "public_insert_client" ON clients FOR INSERT WITH CHECK (true)';
+  END IF;
 END $$;

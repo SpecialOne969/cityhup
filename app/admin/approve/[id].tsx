@@ -6,7 +6,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../constants/colors';
 import { useAppStore } from '../../../store/useAppStore';
-import { getCategoryById } from '../../../constants/categories';
+import { CATEGORIES } from '../../../constants/categories';
 import { PAYMENT_BANDS, DURATIONS } from '../../../constants/subscriptions';
 
 export default function ApproveClientScreen() {
@@ -21,6 +21,8 @@ export default function ApproveClientScreen() {
   const unsuspendClient  = useAppStore(s => s.unsuspendClient);
   const markIndebted     = useAppStore(s => s.markIndebted);
   const setPremium       = useAppStore(s => s.setPremium);
+  const storeCategories  = useAppStore(s => s.categories);
+  const allCats = storeCategories.length > 0 ? storeCategories : CATEGORIES;
 
   const [confirmCode, setConfirmCode] = useState('');
   const [rejectReason, setRejectReason] = useState('');
@@ -195,7 +197,7 @@ export default function ApproveClientScreen() {
         <Section title="Categories">
           <View style={styles.catWrap}>
             {client.categories.map(catId => {
-              const cat = getCategoryById(catId);
+              const cat = allCats.find(c => c.id === catId);
               return cat ? (
                 <View key={catId} style={styles.catTag}>
                   <Ionicons name={cat.icon as any} size={13} color={cat.color} />

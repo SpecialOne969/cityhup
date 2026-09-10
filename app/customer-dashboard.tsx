@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { useAppStore } from '../store/useAppStore';
-import { getCategoryById } from '../constants/categories';
+import { CATEGORIES } from '../constants/categories';
 import ListingCard from '../components/ListingCard';
 
 export default function CustomerDashboardScreen() {
@@ -15,10 +15,16 @@ export default function CustomerDashboardScreen() {
   const customers = useAppStore(s => s.currentCustomer);
   const clients = useAppStore(s => s.clients);
   const customerLogout = useAppStore(s => s.customerLogout);
+  const storeCategories = useAppStore(s => s.categories);
+  const categoriesLoaded = useAppStore(s => s.categoriesLoaded);
+  const loadCategories = useAppStore(s => s.loadCategories);
+  const allCats = storeCategories.length > 0 ? storeCategories : CATEGORIES;
 
   useEffect(() => {
     if (!currentCustomer) router.replace('/customer-login');
   }, [currentCustomer]);
+
+  useEffect(() => { if (!categoriesLoaded) loadCategories(); }, []);
 
   if (!currentCustomer) return null;
 
@@ -111,7 +117,7 @@ export default function CustomerDashboardScreen() {
             <Text style={styles.sectionTitle}>Your Interests</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 16 }}>
               {currentCustomer.interestedCategories.map(catId => {
-                const cat = getCategoryById(catId);
+                const cat = allCats.find(c => c.id === catId);
                 if (!cat) return null;
                 return (
                   <TouchableOpacity

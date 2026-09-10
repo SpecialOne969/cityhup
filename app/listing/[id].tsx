@@ -6,7 +6,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
-import { getCategoryById } from '../../constants/categories';
+import { CATEGORIES } from '../../constants/categories';
 import { useAppStore } from '../../store/useAppStore';
 
 export default function ListingDetailScreen() {
@@ -19,6 +19,8 @@ export default function ListingDetailScreen() {
   const addReview = useAppStore(s => s.addReview);
   const allReviews = useAppStore(s => s.reviews);
   const reviews = client ? (allReviews[client.id] ?? []) : [];
+  const storeCategories = useAppStore(s => s.categories);
+  const allCats = storeCategories.length > 0 ? storeCategories : CATEGORIES;
 
   const [showComplaint, setShowComplaint] = useState(false);
   const [complainName, setComplainName] = useState('');
@@ -48,7 +50,7 @@ export default function ListingDetailScreen() {
     );
   }
 
-  const primaryCat = getCategoryById(client.categories[0]);
+  const primaryCat = allCats.find(c => c.id === client.categories[0]);
 
   function handleCall() {
     Linking.openURL(`tel:${client.phone}`);

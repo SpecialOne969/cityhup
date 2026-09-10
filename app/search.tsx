@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { useAppStore } from '../store/useAppStore';
 import { COUNTRIES, STATES, LGAS } from '../constants/locations';
-import { getLiveCategories } from '../constants/categories';
+import { CATEGORIES } from '../constants/categories';
 import Header from '../components/Header';
 import ListingCard from '../components/ListingCard';
 
@@ -37,6 +37,10 @@ export default function SearchScreen() {
   const [showSort, setShowSort] = useState(false);
 
   const { setSearchFilters, runSearch, searchResults, clients } = useAppStore();
+  const storeCategories = useAppStore(s => s.categories);
+  const categoriesLoaded = useAppStore(s => s.categoriesLoaded);
+  const loadCategories = useAppStore(s => s.loadCategories);
+  const allCats = storeCategories.length > 0 ? storeCategories : CATEGORIES;
   const didMount = useRef(false);
 
   const executeSearch = useCallback((overrides?: {
@@ -50,6 +54,8 @@ export default function SearchScreen() {
     setSearchFilters({ query: q, country, state, lga, category, section: sectionFilter || undefined });
     runSearch();
   }, [query, countryFilter, stateFilter, lgaFilter, catFilter, sectionFilter]);
+
+  useEffect(() => { if (!categoriesLoaded) loadCategories(); }, []);
 
   // Initial load / param changes
   useEffect(() => {
@@ -89,7 +95,7 @@ export default function SearchScreen() {
     setSearchFilters({ query: '' }); runSearch();
   }
 
-  const activeCatLabel = getLiveCategories().find(c => c.id === catFilter)?.label;
+  const activeCatLabel = allCats.find(c => c.id === catFilter)?.label;
   const activeFilterChips = [
     countryFilter && { key: 'country', label: countryFilter, clear: () => { setCountryFilter(''); setStateFilter(''); setLgaFilter(''); } },
     stateFilter && { key: 'state', label: stateFilter, clear: () => { setStateFilter(''); setLgaFilter(''); } },
@@ -213,7 +219,7 @@ export default function SearchScreen() {
           {/* Category */}
           <Text style={styles.filterLabel}>Category</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScrollContent}>
-            {[{ id: '', label: 'All Categories' }, ...getLiveCategories()].map(c => (
+            {[{ id: '', label: 'All Categories' }, ...allCats].map(c => (
               <TouchableOpacity
                 key={c.id}
                 style={[styles.filterChip, catFilter === c.id && styles.filterChipActive]}

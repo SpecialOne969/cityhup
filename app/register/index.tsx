@@ -242,7 +242,7 @@ export default function RegisterScreen() {
       }
     }
     if (step === 1) {
-      if (!businessName || !address || !email || !phone || !busStop || !landmark || !competence || !profile) {
+      if (!businessName || !address || !phone || !busStop || !landmark || !competence || !profile) {
         setStepError('Please fill all required fields marked with *.');
         return false;
       }
@@ -261,6 +261,18 @@ export default function RegisterScreen() {
         setStepError('Director / Person of Responsibility is required.');
         return false;
       }
+      if (!meansOfId) {
+        setStepError('Please select a means of identification.');
+        return false;
+      }
+      if (!meansOfIdNum.trim()) {
+        setStepError('Please enter the ID document number.');
+        return false;
+      }
+      if (idDocImage.length === 0) {
+        setStepError('Please upload a photo of the ID document.');
+        return false;
+      }
     }
     if (step === 3) {
       if (selectedCats.length === 0) {
@@ -271,10 +283,6 @@ export default function RegisterScreen() {
     if (step === 4) {
       if (!acceptedTerms) {
         setStepError('You must accept the Terms & Conditions before submitting.');
-        return false;
-      }
-      if (!agentCode) {
-        setStepError('Enter your assigned City Hup agent code to submit.');
         return false;
       }
       if (clientPassword && clientPassword !== clientPasswordConfirm) {
@@ -539,7 +547,7 @@ export default function RegisterScreen() {
               <FieldRow label="Address" required>
                 <Input value={address} onChangeText={setAddress} placeholder="Full address" multiline numberOfLines={2} />
               </FieldRow>
-              <FieldRow label="Email Address" required>
+              <FieldRow label="Email Address">
                 <Input value={email} onChangeText={setEmail} placeholder="business@email.com" keyboardType="email-address" />
               </FieldRow>
               <FieldRow label="Phone Number" required>
@@ -608,7 +616,7 @@ export default function RegisterScreen() {
               <FieldRow label="Director / Person of Responsibility" required>
                 <Input value={director} onChangeText={setDirector} placeholder="Full name of director or responsible person" />
               </FieldRow>
-              <FieldRow label="Means of Identification">
+              <FieldRow label="Means of Identification" required>
                 <SelectPicker
                   options={MEANS_OF_ID.map(m => ({ label: m.label, value: m.value }))}
                   value={meansOfId}
@@ -616,22 +624,23 @@ export default function RegisterScreen() {
                   placeholder="Select ID type"
                 />
               </FieldRow>
-              {meansOfId && (
-                <FieldRow label={`${MEANS_OF_ID.find(m => m.value === meansOfId)?.label} Number`}>
-                  <Input value={meansOfIdNum} onChangeText={setMeansOfIdNum} placeholder="Enter ID number" />
-                </FieldRow>
-              )}
-
-              {meansOfId && (
-                <FieldRow label="ID Document Photo">
-                  <ImageUploader
-                    images={idDocImage}
-                    onChange={setIdDocImage}
-                    maxImages={1}
-                    uploading={submitting}
-                    note="Take a clear photo of the ID document."
-                  />
-                </FieldRow>
+              {meansOfId ? (
+                <>
+                  <FieldRow label={`${MEANS_OF_ID.find(m => m.value === meansOfId)?.label} Number`} required>
+                    <Input value={meansOfIdNum} onChangeText={setMeansOfIdNum} placeholder="Enter ID number" />
+                  </FieldRow>
+                  <FieldRow label="ID Document Photo" required>
+                    <ImageUploader
+                      images={idDocImage}
+                      onChange={setIdDocImage}
+                      maxImages={1}
+                      uploading={submitting}
+                      note="Take a clear photo of the ID document."
+                    />
+                  </FieldRow>
+                </>
+              ) : (
+                <Text style={styles.fieldSubNote}>Select an ID type above to enter the number and upload a photo.</Text>
               )}
             </>
           )}
@@ -819,11 +828,7 @@ export default function RegisterScreen() {
                 <View style={styles.bankCard}>
                   <View style={styles.bankCardHeader}>
                     <Ionicons name="business-outline" size={18} color={Colors.primary} />
-                    <Text style={styles.bankCardTitle}>Bank Transfer Details</Text>
-                  </View>
-                  <View style={styles.bankRow}>
-                    <Text style={styles.bankLabel}>Bank</Text>
-                    <Text style={styles.bankValue}>First Bank of Nigeria</Text>
+                    <Text style={styles.bankCardTitle}>First Bank of Nigeria</Text>
                   </View>
                   <View style={styles.bankRow}>
                     <Text style={styles.bankLabel}>Account Name</Text>
@@ -909,9 +914,9 @@ export default function RegisterScreen() {
                 </FieldRow>
               ) : null}
 
-              <FieldRow label="Agent / Staff Code" required>
-                <Input value={agentCode} onChangeText={setAgentCode} placeholder="Enter your assigned agent code" />
-                <Text style={styles.fieldSubNote}>This is your unique CityHup agent ID assigned to you by City Hup Ltd. Contact your supervisor if you do not have one.</Text>
+              <FieldRow label="Agent / Staff Code">
+                <Input value={agentCode} onChangeText={setAgentCode} placeholder="Enter your assigned agent code (optional)" />
+                <Text style={styles.fieldSubNote}>Your unique CityHup agent ID assigned by City Hup Ltd. Leave blank if not applicable.</Text>
               </FieldRow>
 
               <TouchableOpacity

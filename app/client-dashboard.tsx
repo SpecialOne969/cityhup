@@ -60,6 +60,7 @@ export default function ClientDashboard() {
 
   if (!currentClient) return null;
 
+  const isApproved = currentClient.status === 'approved';
   const status = STATUS_CONFIG[currentClient.status];
 
   async function handleLogout() {
@@ -203,11 +204,20 @@ export default function ClientDashboard() {
           )}
         </View>
 
+        {editMode && isApproved && (
+          <View style={styles.approvedLockNote}>
+            <Ionicons name="lock-closed-outline" size={14} color={Colors.info} />
+            <Text style={styles.approvedLockText}>
+              Phone, address, competence and profile are locked after approval. Contact City Hup support to request changes to these fields.
+            </Text>
+          </View>
+        )}
+
         <View style={styles.profileCard}>
-          <Field label="Phone" value={phone} onChange={setPhone} editable={editMode} />
-          <Field label="Address" value={address} onChange={setAddress} editable={editMode} multiline />
-          <Field label="Competence / What You Do" value={competence} onChange={setCompetence} editable={editMode} multiline />
-          <Field label="About / Profile" value={profile} onChange={setProfile} editable={editMode} multiline />
+          <Field label="Phone *" value={phone} onChange={setPhone} editable={editMode && !isApproved} />
+          <Field label="Address *" value={address} onChange={setAddress} editable={editMode && !isApproved} multiline />
+          <Field label="Competence / What You Do *" value={competence} onChange={setCompetence} editable={editMode && !isApproved} multiline />
+          <Field label="About / Profile *" value={profile} onChange={setProfile} editable={editMode && !isApproved} multiline />
           <Field label="Additional Info" value={info} onChange={setInfo} editable={editMode} multiline />
           <Field label="Website" value={websiteLink} onChange={setWebsiteLink} editable={editMode} />
         </View>
@@ -412,6 +422,13 @@ const styles = StyleSheet.create({
   shelfItemName: { fontSize: 13, fontWeight: '600', color: Colors.textDark },
   shelfItemDesc: { fontSize: 11, color: Colors.textLight, marginTop: 1 },
   shelfItemPrice: { fontSize: 13, fontWeight: '700', color: Colors.primary },
+
+  approvedLockNote: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+    backgroundColor: Colors.infoLight, borderRadius: 8, padding: 10,
+    marginHorizontal: 12, marginBottom: 4,
+  },
+  approvedLockText: { flex: 1, fontSize: 12, color: Colors.info, lineHeight: 17 },
 
   emptyNote: { fontSize: 13, color: Colors.textMuted, fontStyle: 'italic' },
   readonlyValue: { fontSize: 14, color: Colors.textDark, marginBottom: 3 },

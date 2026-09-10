@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform,
 } from 'react-native';
@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { STATES, getLgasByState } from '../constants/locations';
-import { getLiveCategories } from '../constants/categories';
+import { CATEGORIES } from '../constants/categories';
 import { useAppStore } from '../store/useAppStore';
 
 function SelectPicker({ options, value, onChange, placeholder }: {
@@ -50,6 +50,12 @@ export default function CustomerRegisterScreen() {
   const router = useRouter();
   const registerCustomer = useAppStore(s => s.registerCustomer);
   const currentCustomer = useAppStore(s => s.currentCustomer);
+  const storeCategories = useAppStore(s => s.categories);
+  const categoriesLoaded = useAppStore(s => s.categoriesLoaded);
+  const loadCategories = useAppStore(s => s.loadCategories);
+  const allCats = storeCategories.length > 0 ? storeCategories : CATEGORIES;
+
+  useEffect(() => { if (!categoriesLoaded) loadCategories(); }, []);
 
   const [tab, setTab] = useState<'register' | 'login'>('register');
   const [fullName, setFullName] = useState('');
@@ -193,9 +199,27 @@ export default function CustomerRegisterScreen() {
 
           {/* Interests */}
           <Text style={[styles.sectionLabel, { marginTop: 16 }]}>What are you looking for?</Text>
-          <Text style={styles.labelSub}>Select services you're interested in (optional)</Text>
+          <Text style={styles.labelSub}>Select services and goods you're interested in (optional)</Text>
+
+          <Text style={styles.catGroupLabel}>Services</Text>
           <View style={styles.catGrid}>
-            {getLiveCategories().slice(0, 16).map(cat => (
+            {allCats.filter(c => c.section === 'services').map(cat => (
+              <TouchableOpacity
+                key={cat.id}
+                style={[styles.catChip, selectedCats.includes(cat.id) && { backgroundColor: cat.color, borderColor: cat.color }]}
+                onPress={() => toggleCat(cat.id)}
+              >
+                <Ionicons name={cat.icon as any} size={13} color={selectedCats.includes(cat.id) ? Colors.white : cat.color} />
+                <Text style={[styles.catChipText, selectedCats.includes(cat.id) && { color: Colors.white }]} numberOfLines={1}>
+                  {cat.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={[styles.catGroupLabel, { marginTop: 10 }]}>Goods & Retail</Text>
+          <View style={styles.catGrid}>
+            {allCats.filter(c => c.section === 'goods').map(cat => (
               <TouchableOpacity
                 key={cat.id}
                 style={[styles.catChip, selectedCats.includes(cat.id) && { backgroundColor: cat.color, borderColor: cat.color }]}
@@ -331,6 +355,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.border, borderRadius: 20,
     paddingHorizontal: 10, paddingVertical: 6, backgroundColor: Colors.bgLight,
   },
+  catGroupLabel: { fontSize: 11, fontWeight: '800', color: Colors.primary, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 },
   catChipText: { fontSize: 11, color: Colors.textDark, fontWeight: '500', maxWidth: 80 },
 
   pwRow: {

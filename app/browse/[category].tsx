@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { Colors } from '../../constants/colors';
-import { getCategoryById } from '../../constants/categories';
+import { CATEGORIES } from '../../constants/categories';
 import { useAppStore } from '../../store/useAppStore';
 import Header from '../../components/Header';
 import ListingCard from '../../components/ListingCard';
@@ -14,7 +14,14 @@ export default function CategoryListingsScreen() {
   const router = useRouter();
   const [subFilter, setSubFilter] = useState('');
 
-  const cat = getCategoryById(category ?? '');
+  const storeCategories = useAppStore(s => s.categories);
+  const categoriesLoaded = useAppStore(s => s.categoriesLoaded);
+  const loadCategories = useAppStore(s => s.loadCategories);
+  const allCats = storeCategories.length > 0 ? storeCategories : CATEGORIES;
+
+  useEffect(() => { if (!categoriesLoaded) loadCategories(); }, []);
+
+  const cat = allCats.find(c => c.id === (category ?? ''));
   const allClients = useAppStore(s => s.clients);
   const approved = allClients.filter(c => c.status === 'approved');
 
