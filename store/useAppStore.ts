@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import { Client, Admin, Customer, Complaint, SearchFilters, Ad, Review } from '../types';
+import { Client, Admin, Customer, Complaint, SearchFilters, Ad, Review, Agent, AgentClientLog } from '../types';
 import { generateClientCode } from '../constants/locations';
 import { Category, SubCategory, CATEGORIES, getLiveCategories, setDynamicCategories } from '../constants/categories';
-import { supabase, dbToClient, clientToDb, dbToAdmin, dbToCustomer, dbToComplaint, dbToAd, dbToReview } from '../lib/supabase';
+import { supabase, dbToClient, clientToDb, dbToAdmin, dbToCustomer, dbToComplaint, dbToAd, dbToReview, dbToAgent, dbToAgentClientLog } from '../lib/supabase';
 import { hashPassword, verifyPassword, sanitizeText, checkRateLimit, recordFailedAttempt, clearFailedAttempts } from '../lib/security';
 
 interface AppState {
@@ -42,6 +42,7 @@ interface AppState {
   ads: Ad[];
   loadAds: () => Promise<void>;
   createAd: (data: Omit<Ad, 'id' | 'createdAt'>) => Promise<void>;
+  updateAd: (id: string, data: Partial<Omit<Ad, 'id' | 'createdAt'>>) => Promise<void>;
   toggleAd: (id: string, isActive: boolean) => Promise<void>;
   deleteAd: (id: string) => Promise<void>;
   getAdsForState: (state?: string) => Ad[];
@@ -59,6 +60,20 @@ interface AppState {
   reviews: Record<string, Review[]>;
   loadReviews: (clientId: string) => Promise<void>;
   addReview: (data: Omit<Review, 'id' | 'createdAt'>) => Promise<void>;
+
+  // Agent portal
+  currentAgent: Agent | null;
+  registerAgent: (data: { fullName: string; email: string; phone: string; state: string; lga: string; city: string; accountName: string; accountNumber: string; referredBy?: string; password: string }) => Promise<void>;
+  agentLogin: (email: string, password: string) => Promise<'ok' | 'pending' | 'suspended' | 'not_found'>;
+  agentLogout: () => Promise<void>;
+  agentClientLogs: AgentClientLog[];
+  loadAgentClientLogs: (agentId: string) => Promise<void>;
+  addAgentClientLog: (data: Omit<AgentClientLog, 'id' | 'loggedAt'>) => Promise<void>;
+  // Admin: manage agents
+  agents: Agent[];
+  loadAgents: () => Promise<void>;
+  approveAgent: (id: string) => Promise<void>;
+  suspendAgent: (id: string) => Promise<void>;
 
   trafficCount: number;
   incrementTraffic: () => void;
@@ -393,26 +408,48 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   createAd: async (data) => {
-    const { data: inserted, error } = await supabase
-      .from('ads')
-      .insert({
-        title: data.title,
-        subtitle: data.subtitle ?? null,
-        image_url: data.imageUrl ?? null,
-        bg_color: data.bgColor,
-        icon: data.icon,
-        link_type: data.linkType,
-        link_url: data.linkUrl ?? null,
-        link_client_id: data.linkClientId ?? null,
-        target_state: data.targetState ?? null,
-        is_active: data.isActive,
-        priority: data.priority,
-        expires_at: data.expiresAt ?? null,
-      })
-      .select()
-      .single();
-    if (error || !inserted) throw new Error(error?.message ?? 'Failed to create ad');
-    set(state => ({ ads: [dbToAd(inserted), ...state.ads] }));
+    const id = `ad-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const createdAt = new Date().toISOString();
+    const row = {
+      id,
+      title: data.title,
+      subtitle: data.subtitle ?? null,
+      image_url: data.imageUrl ?? null,
+      bg_color: data.bgColor,
+      icon: data.icon,
+      link_type: data.linkType,
+      link_url: data.linkUrl ?? null,
+      link_client_id: data.linkClientId ?? null,
+      target_state: data.targetState ?? null,
+      is_active: data.isActive,
+      priority: data.priority,
+      expires_at: data.expiresAt ?? null,
+      created_at: createdAt,
+    };
+    const { error } = await supabase.from('ads').insert(row);
+    if (error) throw new Error(error.message ?? 'Failed to create ad');
+    set(state => ({ ads: [dbToAd(row), ...state.ads] }));
+  },
+
+  updateAd: async (id, data) => {
+    const patch: Record<string, any> = {};
+    if (data.title !== undefined)       patch.title          = data.title;
+    if (data.subtitle !== undefined)    patch.subtitle       = data.subtitle ?? null;
+    if (data.imageUrl !== undefined)    patch.image_url      = data.imageUrl ?? null;
+    if (data.bgColor !== undefined)     patch.bg_color       = data.bgColor;
+    if (data.icon !== undefined)        patch.icon           = data.icon;
+    if (data.linkType !== undefined)    patch.link_type      = data.linkType;
+    if (data.linkUrl !== undefined)     patch.link_url       = data.linkUrl ?? null;
+    if (data.linkClientId !== undefined) patch.link_client_id = data.linkClientId ?? null;
+    if (data.targetState !== undefined) patch.target_state   = data.targetState ?? null;
+    if (data.isActive !== undefined)    patch.is_active      = data.isActive;
+    if (data.priority !== undefined)    patch.priority       = data.priority;
+    if (data.expiresAt !== undefined)   patch.expires_at     = data.expiresAt ?? null;
+    const { error } = await supabase.from('ads').update(patch).eq('id', id);
+    if (error) throw new Error(error.message ?? 'Failed to update ad');
+    set(state => ({
+      ads: state.ads.map(a => a.id === id ? { ...a, ...data } : a),
+    }));
   },
 
   toggleAd: async (id, isActive) => {
@@ -556,6 +593,104 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   trafficCount: 14872,
   incrementTraffic: () => set(state => ({ trafficCount: state.trafficCount + 1 })),
+
+  // ── Agent portal ─────────────────────────────────────────────────────────
+  currentAgent: null,
+
+  registerAgent: async (data) => {
+    const stateCode = data.state.replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase();
+    const agentCode = `AGT-${stateCode}-${Date.now().toString().slice(-6)}`;
+    const id = `agt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const passwordHash = await hashPassword(data.password);
+    const row = {
+      id,
+      agent_code: agentCode,
+      full_name: sanitizeText(data.fullName),
+      email: data.email.toLowerCase().trim(),
+      phone: data.phone.trim(),
+      state: data.state,
+      lga: data.lga,
+      city: data.city,
+      account_name: data.accountName,
+      account_number: data.accountNumber,
+      password_hash: passwordHash,
+      referral_code: agentCode,
+      referred_by: data.referredBy?.trim() || null,
+      status: 'pending',
+      monthly_target: 50,
+      withdrawal_threshold: 20,
+      commission_rate: 0.35,
+    };
+    const { error } = await supabase.from('agents').insert(row);
+    if (error) throw new Error(error.message ?? 'Registration failed');
+  },
+
+  agentLogin: async (email, password) => {
+    const { data: row } = await supabase
+      .from('agents').select('*').eq('email', email.toLowerCase().trim()).maybeSingle();
+    if (!row) return 'not_found';
+    if (row.status === 'pending') return 'pending';
+    if (row.status === 'suspended') return 'suspended';
+    const ok = await verifyPassword(password, row.password_hash);
+    if (!ok) return 'not_found';
+    set({ currentAgent: dbToAgent(row) });
+    await get().loadAgentClientLogs(row.id);
+    return 'ok';
+  },
+
+  agentLogout: async () => {
+    set({ currentAgent: null, agentClientLogs: [] });
+  },
+
+  agentClientLogs: [],
+
+  loadAgentClientLogs: async (agentId) => {
+    const { data } = await supabase
+      .from('agent_client_logs').select('*').eq('agent_id', agentId)
+      .order('logged_at', { ascending: false });
+    set({ agentClientLogs: (data ?? []).map(dbToAgentClientLog) });
+  },
+
+  addAgentClientLog: async (data) => {
+    const id = `acl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const loggedAt = new Date().toISOString();
+    const row = {
+      id,
+      agent_id: data.agentId,
+      agent_code: data.agentCode,
+      client_name: sanitizeText(data.clientName),
+      client_phone: data.clientPhone ?? null,
+      client_id: data.clientId ?? null,
+      payment_band: data.paymentBand,
+      commission_amount: Number((data.paymentBand * 0.35).toFixed(2)),
+      commission_status: 'pending',
+      notes: data.notes ? sanitizeText(data.notes) : null,
+      logged_at: loggedAt,
+    };
+    const { error } = await supabase.from('agent_client_logs').insert(row);
+    if (error) throw new Error(error.message ?? 'Failed to log client');
+    set(state => ({ agentClientLogs: [dbToAgentClientLog(row), ...state.agentClientLogs] }));
+  },
+
+  agents: [],
+
+  loadAgents: async () => {
+    const { data } = await supabase
+      .from('agents').select('*').order('registered_at', { ascending: false });
+    set({ agents: (data ?? []).map(dbToAgent) });
+  },
+
+  approveAgent: async (id) => {
+    const { error } = await supabase.from('agents').update({ status: 'approved' }).eq('id', id);
+    if (error) throw new Error(error.message);
+    set(state => ({ agents: state.agents.map(a => a.id === id ? { ...a, status: 'approved' as const } : a) }));
+  },
+
+  suspendAgent: async (id) => {
+    const { error } = await supabase.from('agents').update({ status: 'suspended' }).eq('id', id);
+    if (error) throw new Error(error.message);
+    set(state => ({ agents: state.agents.map(a => a.id === id ? { ...a, status: 'suspended' as const } : a) }));
+  },
 
   // ── Dynamic categories ────────────────────────────────────────────────────
   categories: [],

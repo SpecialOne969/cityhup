@@ -295,6 +295,10 @@ export default function AdminDashboard() {
               <Ionicons name="megaphone-outline" size={22} color={Colors.warning} />
               <Text style={styles.qaBtnText}>Manage Ads</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.qaBtn} onPress={() => router.push('/admin/agents' as any)}>
+              <Ionicons name="briefcase-outline" size={22} color={Colors.info} />
+              <Text style={styles.qaBtnText}>Agents</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.qaBtn} onPress={() => router.push('/register' as any)}>
               <Ionicons name="person-add-outline" size={22} color={Colors.success} />
               <Text style={styles.qaBtnText}>Register Client</Text>

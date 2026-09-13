@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Client, Admin, Customer, Complaint, Ad, Review } from '../types';
+import { Client, Admin, Customer, Complaint, Ad, Review, Agent, AgentClientLog } from '../types';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL
   ?? 'https://udwfsahkujngleoncfey.supabase.co';
@@ -171,6 +171,44 @@ export function dbToReview(row: any): Review {
     rating: row.rating,
     comment: row.comment ?? undefined,
     createdAt: row.created_at,
+  };
+}
+
+export function dbToAgent(row: any): Agent {
+  return {
+    id: row.id,
+    agentCode: row.agent_code,
+    fullName: row.full_name,
+    email: row.email,
+    phone: row.phone,
+    state: row.state ?? '',
+    lga: row.lga ?? '',
+    city: row.city ?? '',
+    accountName: row.account_name ?? '',
+    accountNumber: row.account_number ?? '',
+    referralCode: row.referral_code,
+    referredBy: row.referred_by ?? undefined,
+    status: row.status,
+    monthlyTarget: row.monthly_target ?? 50,
+    withdrawalThreshold: row.withdrawal_threshold ?? 20,
+    commissionRate: row.commission_rate ?? 0.35,
+    registeredAt: row.registered_at,
+  };
+}
+
+export function dbToAgentClientLog(row: any): AgentClientLog {
+  return {
+    id: row.id,
+    agentId: row.agent_id,
+    agentCode: row.agent_code,
+    clientName: row.client_name,
+    clientPhone: row.client_phone ?? undefined,
+    clientId: row.client_id ?? undefined,
+    paymentBand: row.payment_band ?? 0,
+    commissionAmount: row.commission_amount ?? 0,
+    commissionStatus: row.commission_status ?? 'pending',
+    notes: row.notes ?? undefined,
+    loggedAt: row.logged_at,
   };
 }
 

@@ -146,6 +146,42 @@ CREATE POLICY "customer_update_own" ON customers
 CREATE POLICY "customer_insert_own" ON customers
   FOR INSERT WITH CHECK (auth.uid() = id);
 
+-- ADS TABLE
+CREATE TABLE IF NOT EXISTS ads (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  subtitle TEXT,
+  image_url TEXT,
+  bg_color TEXT NOT NULL DEFAULT '#1a8c1a',
+  icon TEXT NOT NULL DEFAULT 'megaphone',
+  link_type TEXT NOT NULL DEFAULT 'external' CHECK (link_type IN ('external', 'client', 'category')),
+  link_url TEXT,
+  link_client_id TEXT,
+  target_state TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  priority INTEGER NOT NULL DEFAULT 0,
+  expires_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE ads ENABLE ROW LEVEL SECURITY;
+
+-- ADS: anyone can read active ads
+CREATE POLICY "public_read_ads" ON ads
+  FOR SELECT USING (true);
+
+-- ADS: only authenticated admins can insert
+CREATE POLICY "admin_insert_ad" ON ads
+  FOR INSERT TO authenticated WITH CHECK (true);
+
+-- ADS: only authenticated admins can update
+CREATE POLICY "admin_update_ad" ON ads
+  FOR UPDATE TO authenticated USING (true);
+
+-- ADS: only authenticated admins can delete
+CREATE POLICY "admin_delete_ad" ON ads
+  FOR DELETE TO authenticated USING (true);
+
 -- ============================================================
 -- SEED DATA (optional — 4 demo clients)
 -- ============================================================
@@ -243,3 +279,56 @@ BEGIN
     EXECUTE 'CREATE POLICY "public_insert_client" ON clients FOR INSERT WITH CHECK (true)';
   END IF;
 END $$;
+
+-- ============================================================
+-- AGENTS TABLE
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS agents (
+  id TEXT PRIMARY KEY,
+  agent_code TEXT UNIQUE NOT NULL,
+  full_name TEXT NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  phone TEXT NOT NULL,
+  state TEXT,
+  lga TEXT,
+  city TEXT,
+  account_name TEXT,
+  account_number TEXT,
+  password_hash TEXT NOT NULL,
+  referral_code TEXT UNIQUE NOT NULL,
+  referred_by TEXT,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'suspended')),
+  monthly_target INTEGER NOT NULL DEFAULT 50,
+  withdrawal_threshold INTEGER NOT NULL DEFAULT 20,
+  commission_rate NUMERIC NOT NULL DEFAULT 0.35,
+  registered_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE agents ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "public_read_agents"   ON agents FOR SELECT USING (true);
+CREATE POLICY "public_insert_agent"  ON agents FOR INSERT WITH CHECK (true);
+CREATE POLICY "public_update_agent"  ON agents FOR UPDATE USING (true) WITH CHECK (true);
+
+-- ============================================================
+-- AGENT CLIENT LOGS TABLE
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS agent_client_logs (
+  id TEXT PRIMARY KEY,
+  agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+  agent_code TEXT NOT NULL,
+  client_name TEXT NOT NULL,
+  client_phone TEXT,
+  client_id TEXT,
+  payment_band NUMERIC NOT NULL DEFAULT 0,
+  commission_amount NUMERIC NOT NULL DEFAULT 0,
+  commission_status TEXT NOT NULL DEFAULT 'pending' CHECK (commission_status IN ('pending', 'earned', 'paid')),
+  notes TEXT,
+  logged_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE agent_client_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "public_read_agent_logs"   ON agent_client_logs FOR SELECT USING (true);
+CREATE POLICY "public_insert_agent_log"  ON agent_client_logs FOR INSERT WITH CHECK (true);
+CREATE POLICY "public_update_agent_log"  ON agent_client_logs FOR UPDATE USING (true) WITH CHECK (true);

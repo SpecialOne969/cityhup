@@ -6,65 +6,106 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { useAppStore } from '../../store/useAppStore';
+import { Ad } from '../../types';
 import { STATES } from '../../constants/locations';
 import ImageUploader from '../../components/ImageUploader';
 import { uploadImage } from '../../lib/uploadImage';
 
 const NIGERIA_STATES = STATES['Nigeria'];
 const AD_COLORS = [
-  { label: 'Green', value: Colors.primary },
+  { label: 'Green',  value: Colors.primary },
   { label: 'Orange', value: Colors.accent },
   { label: 'Purple', value: '#7B1FA2' },
-  { label: 'Blue', value: '#0277BD' },
-  { label: 'Dark', value: Colors.primaryDark },
-  { label: 'Gold', value: '#B8860B' },
+  { label: 'Blue',   value: '#0277BD' },
+  { label: 'Dark',   value: Colors.primaryDark },
+  { label: 'Gold',   value: '#B8860B' },
 ];
 const AD_ICONS = ['megaphone', 'star', 'sparkles', 'storefront', 'home', 'car', 'restaurant', 'school', 'briefcase', 'hammer'];
+
+type FormMode = 'create' | 'edit';
 
 export default function AdsScreen() {
   const router = useRouter();
   const currentAdmin = useAppStore(s => s.currentAdmin);
-  const ads = useAppStore(s => s.ads);
-  const createAd = useAppStore(s => s.createAd);
-  const toggleAd = useAppStore(s => s.toggleAd);
-  const deleteAd = useAppStore(s => s.deleteAd);
+  const ads          = useAppStore(s => s.ads);
+  const createAd     = useAppStore(s => s.createAd);
+  const updateAd     = useAppStore(s => s.updateAd);
+  const toggleAd     = useAppStore(s => s.toggleAd);
+  const deleteAd     = useAppStore(s => s.deleteAd);
 
-  const [showForm, setShowForm] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState('');
+  const [formMode, setFormMode]       = useState<FormMode>('create');
+  const [editingId, setEditingId]     = useState<string | null>(null);
+  const [showForm, setShowForm]       = useState(false);
+  const [saving, setSaving]           = useState(false);
+  const [formError, setFormError]     = useState('');
   const [formSuccess, setFormSuccess] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  // Form state
-  const [title, setTitle] = useState('');
-  const [subtitle, setSubtitle] = useState('');
-  const [bgColor, setBgColor] = useState(Colors.primary);
-  const [icon, setIcon] = useState('megaphone');
-  const [adImage, setAdImage] = useState<string[]>([]);
-  const [linkType, setLinkType] = useState<'external' | 'client' | 'category'>('external');
-  const [linkUrl, setLinkUrl] = useState('');
+  // Form fields
+  const [title, setTitle]             = useState('');
+  const [subtitle, setSubtitle]       = useState('');
+  const [bgColor, setBgColor]         = useState(Colors.primary);
+  const [icon, setIcon]               = useState('megaphone');
+  const [adImage, setAdImage]         = useState<string[]>([]);
+  const [linkType, setLinkType]       = useState<'external' | 'client' | 'category'>('external');
+  const [linkUrl, setLinkUrl]         = useState('');
   const [linkClientId, setLinkClientId] = useState('');
   const [targetState, setTargetState] = useState('');
-  const [priority, setPriority] = useState('0');
+  const [priority, setPriority]       = useState('0');
+  const [isActive, setIsActive]       = useState(true);
 
-  if (!currentAdmin) {
-    router.replace('/admin/login');
-    return null;
+  if (!currentAdmin) { router.replace('/admin/login'); return null; }
+
+  function resetForm() {
+    setTitle(''); setSubtitle(''); setBgColor(Colors.primary); setIcon('megaphone');
+    setAdImage([]); setLinkType('external'); setLinkUrl(''); setLinkClientId('');
+    setTargetState(''); setPriority('0'); setIsActive(true);
+    setFormError(''); setEditingId(null);
   }
 
-  async function handleCreate() {
+  function openCreate() {
+    resetForm();
+    setFormMode('create');
+    setShowForm(true);
+  }
+
+  function openEdit(ad: Ad) {
+    setFormMode('edit');
+    setEditingId(ad.id);
+    setTitle(ad.title);
+    setSubtitle(ad.subtitle ?? '');
+    setBgColor(ad.bgColor);
+    setIcon(ad.icon);
+    setAdImage(ad.imageUrl ? [ad.imageUrl] : []);
+    setLinkType(ad.linkType);
+    setLinkUrl(ad.linkUrl ?? '');
+    setLinkClientId(ad.linkClientId ?? '');
+    setTargetState(ad.targetState ?? '');
+    setPriority(String(ad.priority ?? 0));
+    setIsActive(ad.isActive);
+    setFormError('');
+    setShowForm(true);
+  }
+
+  function closeForm() {
+    setShowForm(false);
+    resetForm();
+  }
+
+  async function resolveImage(): Promise<string | undefined> {
+    if (adImage.length === 0) return undefined;
+    if (adImage[0].startsWith('http')) return adImage[0]; // unchanged existing URL
+    const ext = (adImage[0].split('.').pop() ?? 'jpg').split('?')[0];
+    return uploadImage(adImage[0], 'ad-images', `ad-${Date.now()}.${ext}`);
+  }
+
+  async function handleSave() {
     setFormError('');
     if (!title.trim()) { setFormError('Ad title is required.'); return; }
     setSaving(true);
     try {
-      let imageUrl: string | undefined;
-      if (adImage.length > 0 && !adImage[0].startsWith('http')) {
-        const ext = (adImage[0].split('.').pop() ?? 'jpg').split('?')[0];
-        imageUrl = await uploadImage(adImage[0], 'ad-images', `ad-${Date.now()}.${ext}`);
-      } else if (adImage.length > 0) {
-        imageUrl = adImage[0];
-      }
-
-      await createAd({
+      const imageUrl = await resolveImage();
+      const payload = {
         title: title.trim(),
         subtitle: subtitle.trim() || undefined,
         imageUrl,
@@ -74,28 +115,29 @@ export default function AdsScreen() {
         linkUrl: linkType === 'client' ? undefined : (linkUrl.trim() || undefined),
         linkClientId: linkType === 'client' ? (linkClientId.trim() || undefined) : undefined,
         targetState: targetState || undefined,
-        isActive: true,
+        isActive,
         priority: Number(priority) || 0,
-      });
-      setFormSuccess('Ad created and is now live.');
+      };
+
+      if (formMode === 'edit' && editingId) {
+        await updateAd(editingId, payload);
+        setFormSuccess('Ad updated successfully.');
+      } else {
+        await createAd(payload);
+        setFormSuccess('Ad created and is now live.');
+      }
       setTimeout(() => setFormSuccess(''), 3000);
-      setShowForm(false);
-      resetForm();
+      closeForm();
     } catch (e: any) {
-      setFormError(e.message ?? 'Failed to create ad.');
+      setFormError(e.message ?? 'Failed to save ad.');
     } finally {
       setSaving(false);
     }
   }
 
-  function resetForm() {
-    setTitle(''); setSubtitle(''); setBgColor(Colors.primary); setIcon('megaphone');
-    setAdImage([]); setLinkType('external'); setLinkUrl(''); setLinkClientId('');
-    setTargetState(''); setPriority('0'); setFormError('');
-  }
-
   async function handleDelete(id: string) {
     await deleteAd(id);
+    setDeleteConfirm(null);
   }
 
   return (
@@ -105,7 +147,7 @@ export default function AdsScreen() {
           <Ionicons name="arrow-back" size={20} color={Colors.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Manage Ads</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={() => { setShowForm(v => !v); resetForm(); }}>
+        <TouchableOpacity style={styles.addBtn} onPress={showForm ? closeForm : openCreate}>
           <Ionicons name={showForm ? 'close' : 'add'} size={22} color={Colors.white} />
         </TouchableOpacity>
       </View>
@@ -119,17 +161,21 @@ export default function AdsScreen() {
           </View>
         ) : null}
 
-        {/* Create form */}
+        {/* Create / Edit form */}
         {showForm && (
           <View style={styles.formCard}>
-            <Text style={styles.formTitle}>New Advertisement</Text>
+            <Text style={styles.formTitle}>
+              {formMode === 'edit' ? 'Edit Advertisement' : 'New Advertisement'}
+            </Text>
 
             <FieldRow label="Ad Title *">
-              <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="e.g. Get Your Business Listed Today" placeholderTextColor={Colors.textMuted} />
+              <TextInput style={styles.input} value={title} onChangeText={setTitle}
+                placeholder="e.g. Get Your Business Listed Today" placeholderTextColor={Colors.textMuted} />
             </FieldRow>
 
             <FieldRow label="Subtitle">
-              <TextInput style={styles.input} value={subtitle} onChangeText={setSubtitle} placeholder="Short tagline or description" placeholderTextColor={Colors.textMuted} />
+              <TextInput style={styles.input} value={subtitle} onChangeText={setSubtitle}
+                placeholder="Short tagline or description" placeholderTextColor={Colors.textMuted} />
             </FieldRow>
 
             <FieldRow label="Ad Image (optional)">
@@ -138,7 +184,7 @@ export default function AdsScreen() {
                 onChange={setAdImage}
                 maxImages={1}
                 uploading={saving}
-                note="Upload a banner image. If provided it will appear as the ad background. Recommended: wide/landscape photo."
+                note="Upload a banner image. Recommended: wide/landscape photo."
               />
             </FieldRow>
 
@@ -188,15 +234,18 @@ export default function AdsScreen() {
 
             {linkType === 'client' ? (
               <FieldRow label="Client ID">
-                <TextInput style={styles.input} value={linkClientId} onChangeText={setLinkClientId} placeholder="Paste client ID" placeholderTextColor={Colors.textMuted} />
+                <TextInput style={styles.input} value={linkClientId} onChangeText={setLinkClientId}
+                  placeholder="Paste client ID" placeholderTextColor={Colors.textMuted} />
               </FieldRow>
             ) : (
               <FieldRow label={linkType === 'category' ? 'Category ID' : 'URL'}>
-                <TextInput style={styles.input} value={linkUrl} onChangeText={setLinkUrl} placeholder={linkType === 'category' ? 'e.g. automobile' : 'https://...'} placeholderTextColor={Colors.textMuted} />
+                <TextInput style={styles.input} value={linkUrl} onChangeText={setLinkUrl}
+                  placeholder={linkType === 'category' ? 'e.g. automobile' : 'https://...'}
+                  placeholderTextColor={Colors.textMuted} />
               </FieldRow>
             )}
 
-            <FieldRow label="Target State (leave blank for all states)">
+            <FieldRow label="Target State (blank = all states)">
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
                 <TouchableOpacity
                   style={[styles.stateChip, !targetState && styles.stateChipActive]}
@@ -217,10 +266,25 @@ export default function AdsScreen() {
             </FieldRow>
 
             <FieldRow label="Priority (higher = shown first)">
-              <TextInput style={styles.input} value={priority} onChangeText={setPriority} keyboardType="numeric" placeholder="0" placeholderTextColor={Colors.textMuted} />
+              <TextInput style={styles.input} value={priority} onChangeText={setPriority}
+                keyboardType="numeric" placeholder="0" placeholderTextColor={Colors.textMuted} />
             </FieldRow>
 
-            {/* Preview */}
+            {formMode === 'edit' && (
+              <FieldRow label="Active">
+                <View style={styles.switchRow}>
+                  <Switch
+                    value={isActive}
+                    onValueChange={setIsActive}
+                    trackColor={{ true: Colors.success, false: Colors.border }}
+                    thumbColor={Colors.white}
+                  />
+                  <Text style={styles.switchLabel}>{isActive ? 'Live' : 'Hidden'}</Text>
+                </View>
+              </FieldRow>
+            )}
+
+            {/* Live preview */}
             <Text style={styles.previewLabel}>Preview</Text>
             <View style={[styles.preview, { backgroundColor: bgColor }]}>
               {adImage.length > 0 ? (
@@ -243,14 +307,25 @@ export default function AdsScreen() {
               </View>
             ) : null}
 
-            <TouchableOpacity style={[styles.createBtn, saving && { opacity: 0.6 }]} onPress={handleCreate} disabled={saving}>
-              <Ionicons name="checkmark-circle" size={18} color={Colors.white} />
-              <Text style={styles.createBtnText}>{saving ? 'Saving…' : 'Create Ad'}</Text>
-            </TouchableOpacity>
+            <View style={styles.formActions}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={closeForm}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveBtn, saving && { opacity: 0.6 }]}
+                onPress={handleSave}
+                disabled={saving}
+              >
+                <Ionicons name="checkmark-circle" size={18} color={Colors.white} />
+                <Text style={styles.saveBtnText}>
+                  {saving ? 'Saving…' : formMode === 'edit' ? 'Update Ad' : 'Create Ad'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
-        {/* Existing ads */}
+        {/* List */}
         <View style={styles.listHeader}>
           <Text style={styles.listHeaderText}>{ads.length} Ad{ads.length !== 1 ? 's' : ''}</Text>
         </View>
@@ -263,30 +338,52 @@ export default function AdsScreen() {
         )}
 
         {ads.map(ad => (
-          <View key={ad.id} style={styles.adRow}>
-            {ad.imageUrl ? (
-              <Image source={{ uri: ad.imageUrl }} style={styles.adThumb} resizeMode="cover" />
-            ) : (
-              <View style={[styles.adColorDot, { backgroundColor: ad.bgColor }]}>
-                <Ionicons name={ad.icon as any} size={16} color={Colors.white} />
+          <View key={ad.id}>
+            {/* Delete confirmation inline */}
+            {deleteConfirm === ad.id ? (
+              <View style={styles.deleteConfirmRow}>
+                <Text style={styles.deleteConfirmText}>Delete "{ad.title}"?</Text>
+                <TouchableOpacity style={styles.confirmYes} onPress={() => handleDelete(ad.id)}>
+                  <Text style={styles.confirmYesText}>Delete</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.confirmNo} onPress={() => setDeleteConfirm(null)}>
+                  <Text style={styles.confirmNoText}>Cancel</Text>
+                </TouchableOpacity>
               </View>
-            )}
-            <View style={styles.adInfo}>
-              <Text style={styles.adTitle}>{ad.title}</Text>
-              <Text style={styles.adMeta}>
-                {ad.targetState ? `📍 ${ad.targetState}` : '🌍 All states'} · Priority: {ad.priority}
-                {ad.imageUrl ? ' · 🖼 Image' : ''}
-              </Text>
+            ) : null}
+
+            <View style={styles.adRow}>
+              {ad.imageUrl ? (
+                <Image source={{ uri: ad.imageUrl }} style={styles.adThumb} resizeMode="cover" />
+              ) : (
+                <View style={[styles.adColorDot, { backgroundColor: ad.bgColor }]}>
+                  <Ionicons name={ad.icon as any} size={16} color={Colors.white} />
+                </View>
+              )}
+
+              <View style={styles.adInfo}>
+                <Text style={styles.adTitle}>{ad.title}</Text>
+                <Text style={styles.adMeta}>
+                  {ad.targetState ? `📍 ${ad.targetState}` : '🌍 All'} · P:{ad.priority}
+                  {ad.imageUrl ? ' · 🖼' : ''}
+                </Text>
+              </View>
+
+              <Switch
+                value={ad.isActive}
+                onValueChange={v => toggleAd(ad.id, v)}
+                trackColor={{ true: Colors.success, false: Colors.border }}
+                thumbColor={Colors.white}
+              />
+
+              <TouchableOpacity style={styles.iconAction} onPress={() => openEdit(ad)}>
+                <Ionicons name="create-outline" size={18} color={Colors.primary} />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.iconAction} onPress={() => setDeleteConfirm(ad.id)}>
+                <Ionicons name="trash-outline" size={18} color={Colors.danger} />
+              </TouchableOpacity>
             </View>
-            <Switch
-              value={ad.isActive}
-              onValueChange={v => toggleAd(ad.id, v)}
-              trackColor={{ true: Colors.success, false: Colors.border }}
-              thumbColor={Colors.white}
-            />
-            <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(ad.id)}>
-              <Ionicons name="trash-outline" size={18} color={Colors.danger} />
-            </TouchableOpacity>
           </View>
         ))}
 
@@ -372,27 +469,27 @@ const styles = StyleSheet.create({
   stateChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   stateChipText: { fontSize: 12, color: Colors.textMedium },
   stateChipTextActive: { color: Colors.white, fontWeight: '600' },
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  switchLabel: { fontSize: 13, color: Colors.textMedium, fontWeight: '500' },
 
   previewLabel: { fontSize: 11, fontWeight: '600', color: Colors.textMedium, marginBottom: 6 },
-  preview: {
-    borderRadius: 10, marginBottom: 14, overflow: 'hidden', minHeight: 80,
-  },
-  previewImg: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.55,
-  },
-  previewOverlay: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    padding: 14,
-  },
+  preview: { borderRadius: 10, marginBottom: 14, overflow: 'hidden', minHeight: 80 },
+  previewImg: { ...StyleSheet.absoluteFillObject, opacity: 0.55 },
+  previewOverlay: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
   previewTitle: { color: Colors.white, fontSize: 13, fontWeight: '700' },
   previewSub: { color: 'rgba(255,255,255,0.8)', fontSize: 11, marginTop: 2 },
 
-  createBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, backgroundColor: Colors.success, borderRadius: 12, paddingVertical: 14,
+  formActions: { flexDirection: 'row', gap: 10 },
+  cancelBtn: {
+    flex: 1, alignItems: 'center', paddingVertical: 13, borderRadius: 12,
+    borderWidth: 1.5, borderColor: Colors.border,
   },
-  createBtnText: { color: Colors.white, fontWeight: '800', fontSize: 15 },
+  cancelBtnText: { color: Colors.textMedium, fontWeight: '700', fontSize: 14 },
+  saveBtn: {
+    flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, backgroundColor: Colors.success, borderRadius: 12, paddingVertical: 13,
+  },
+  saveBtnText: { color: Colors.white, fontWeight: '800', fontSize: 15 },
 
   listHeader: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 6 },
   listHeaderText: { fontSize: 13, fontWeight: '700', color: Colors.textMedium },
@@ -401,20 +498,33 @@ const styles = StyleSheet.create({
 
   adRow: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.bgCard, marginHorizontal: 12, marginBottom: 8,
-    borderRadius: 10, padding: 12, gap: 10,
+    backgroundColor: Colors.bgCard, marginHorizontal: 12, marginBottom: 4,
+    borderRadius: 10, padding: 12, gap: 8,
     borderWidth: 1, borderColor: Colors.borderLight,
   },
   adColorDot: {
     width: 40, height: 40, borderRadius: 8,
     alignItems: 'center', justifyContent: 'center',
   },
-  adThumb: {
-    width: 40, height: 40, borderRadius: 8,
-    backgroundColor: Colors.borderLight,
-  },
+  adThumb: { width: 40, height: 40, borderRadius: 8, backgroundColor: Colors.borderLight },
   adInfo: { flex: 1 },
-  adTitle: { fontSize: 13, fontWeight: '700', color: Colors.textDark, marginBottom: 3 },
+  adTitle: { fontSize: 13, fontWeight: '700', color: Colors.textDark, marginBottom: 2 },
   adMeta: { fontSize: 11, color: Colors.textLight },
-  deleteBtn: { padding: 4 },
+  iconAction: { padding: 6 },
+
+  deleteConfirmRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.dangerLight, marginHorizontal: 12,
+    borderRadius: 10, padding: 10, marginBottom: 2,
+    borderWidth: 1, borderColor: Colors.danger + '40',
+  },
+  deleteConfirmText: { flex: 1, fontSize: 12, color: Colors.danger, fontWeight: '600' },
+  confirmYes: {
+    backgroundColor: Colors.danger, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6,
+  },
+  confirmYesText: { color: Colors.white, fontSize: 12, fontWeight: '700' },
+  confirmNo: {
+    borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6,
+  },
+  confirmNoText: { color: Colors.textMedium, fontSize: 12 },
 });

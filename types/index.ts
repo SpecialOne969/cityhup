@@ -170,3 +170,40 @@ export interface Customer {
   interestedCategories: string[];
   registeredAt: string;
 }
+
+export type AgentStatus = 'pending' | 'approved' | 'suspended';
+export type CommissionStatus = 'pending' | 'earned' | 'paid';
+
+export interface Agent {
+  id: string;
+  agentCode: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  state: string;
+  lga: string;
+  city: string;
+  accountName: string;
+  accountNumber: string;
+  referralCode: string;
+  referredBy?: string;
+  status: AgentStatus;
+  monthlyTarget: number;
+  withdrawalThreshold: number;
+  commissionRate: number;
+  registeredAt: string;
+}
+
+export interface AgentClientLog {
+  id: string;
+  agentId: string;
+  agentCode: string;
+  clientName: string;
+  clientPhone?: string;
+  clientId?: string;
+  paymentBand: number;
+  commissionAmount: number;
+  commissionStatus: CommissionStatus;
+  notes?: string;
+  loggedAt: string;
+}
