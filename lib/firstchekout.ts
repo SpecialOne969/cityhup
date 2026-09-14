@@ -1,13 +1,7 @@
 import { Platform, Linking } from 'react-native';
 import { supabase } from './supabase';
 
-// Sandbox checkout base URL.
-// NOTE: Verify exact checkout URL format in FirstChekOut merchant docs.
-// Change to https://www.firstchekout.com/pay/ for production.
-const CHECKOUT_BASE =
-  process.env.EXPO_PUBLIC_FIRSTCHEKOUT_ENV === 'live'
-    ? 'https://www.firstchekout.com/pay/'
-    : 'https://www.firstchekoutdev.com/pay/';
+const CHECKOUT_BASE = 'https://www.firstchekout.com/pay/';
 
 // sessionStorage key used to persist the accessCode across the payment redirect
 const SESSION_KEY = 'fc_payment';

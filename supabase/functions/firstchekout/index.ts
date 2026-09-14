@@ -17,8 +17,8 @@ const MERCHANT_ID = Deno.env.get('FIRSTCHEKOUT_MERCHANT_ID') ?? PUBLIC_KEY;
 const CLIENT_ID     = PUBLIC_KEY;
 const CLIENT_SECRET = SECRET_KEY;
 
-const IDENTITY_URL = 'https://www.firstchekoutdev.com/identityserver';
-const API_URL      = 'https://www.firstchekoutdev.com/apigateway';
+const IDENTITY_URL = 'https://www.firstchekout.com/identityserver';
+const API_URL      = 'https://www.firstchekout.com/apigateway';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
