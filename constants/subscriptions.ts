@@ -14,7 +14,7 @@ export const DURATIONS = Array.from({ length: 12 }, (_, i) => ({
 }));
 
 export const PAYMENT_METHODS = [
-  { label: 'Paystack (Online)', value: 'paystack' },
+  { label: 'FirstChekOut — First Bank (Online)', value: 'firstchekout' },
   { label: 'Bank Transfer', value: 'bank_transfer' },
   { label: 'Interswitch', value: 'interswitch' },
   { label: 'Remita', value: 'remita' },
