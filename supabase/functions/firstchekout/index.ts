@@ -2,19 +2,20 @@
 // Deploy: npx supabase functions deploy firstchekout
 //
 // Env vars to set in Supabase Dashboard → Edge Functions → Secrets:
-//   FIRSTCHEKOUT_CLIENT_ID      — from merchant dashboard → Settings → API Keys
-//   FIRSTCHEKOUT_CLIENT_SECRET  — generated credential secret
-//   FIRSTCHEKOUT_PUBLIC_KEY     — sb-pk-... (sandbox) or lv-pk-... (live)
-//   FIRSTCHEKOUT_MERCHANT_ID    — your merchant ID number
-//   FIRSTCHEKOUT_SECRET_KEY     — sb-sk-... (sandbox) or lv-sk-... (live)
+//   FIRSTCHEKOUT_PUBLIC_KEY  — public/API key from merchant dashboard
+//   FIRSTCHEKOUT_SECRET_KEY  — secret key from merchant dashboard
+//   FIRSTCHEKOUT_MERCHANT_ID — (optional) merchant ID shown in account profile;
+//                              defaults to PUBLIC_KEY if not set
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 
-const CLIENT_ID     = Deno.env.get('FIRSTCHEKOUT_CLIENT_ID')     ?? '';
-const CLIENT_SECRET = Deno.env.get('FIRSTCHEKOUT_CLIENT_SECRET') ?? '';
-const PUBLIC_KEY    = Deno.env.get('FIRSTCHEKOUT_PUBLIC_KEY')    ?? '';
-const MERCHANT_ID   = Deno.env.get('FIRSTCHEKOUT_MERCHANT_ID')  ?? '';
-const SECRET_KEY    = Deno.env.get('FIRSTCHEKOUT_SECRET_KEY')    ?? '';
+const PUBLIC_KEY  = Deno.env.get('FIRSTCHEKOUT_PUBLIC_KEY')  ?? '';
+const SECRET_KEY  = Deno.env.get('FIRSTCHEKOUT_SECRET_KEY')  ?? '';
+const MERCHANT_ID = Deno.env.get('FIRSTCHEKOUT_MERCHANT_ID') ?? PUBLIC_KEY;
+
+// OAuth uses the same public/secret key pair as client credentials
+const CLIENT_ID     = PUBLIC_KEY;
+const CLIENT_SECRET = SECRET_KEY;
 
 const IDENTITY_URL = 'https://www.firstchekoutdev.com/identityserver';
 const API_URL      = 'https://www.firstchekoutdev.com/apigateway';
