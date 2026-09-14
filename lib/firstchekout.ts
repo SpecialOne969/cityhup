@@ -31,6 +31,12 @@ export interface FirstChekoutVerifyResult {
  * The page will not return from this call on web — the redirect takes over.
  */
 export async function initiateFirstChekoutPayment(opts: FirstChekoutInitOptions): Promise<void> {
+  const origin =
+    Platform.OS === 'web' && typeof window !== 'undefined'
+      ? window.location.origin
+      : 'https://cityhup.com';
+  const callbackUrl = `${origin}/payment/callback`;
+
   const { data, error } = await supabase.functions.invoke('firstchekout', {
     body: {
       action: 'initiate',
@@ -38,6 +44,7 @@ export async function initiateFirstChekoutPayment(opts: FirstChekoutInitOptions)
       payerEmail: opts.payerEmail,
       payerName: opts.payerName,
       paymentReference: opts.paymentReference,
+      callbackUrl,
     },
   });
 

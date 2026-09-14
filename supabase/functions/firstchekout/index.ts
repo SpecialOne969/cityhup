@@ -68,7 +68,7 @@ serve(async (req) => {
 
     // ── Initiate transaction ───────────────────────────────────────────────
     if (action === 'initiate') {
-      const { amount, payerEmail, payerName, paymentReference } = body;
+      const { amount, payerEmail, payerName, paymentReference, callbackUrl } = body;
       if (!amount || !payerEmail || !payerName || !paymentReference) {
         return json({ error: 'amount, payerEmail, payerName, and paymentReference are required.' }, 400);
       }
@@ -88,6 +88,7 @@ serve(async (req) => {
           Purpose: 'CityHup Client Registration',
           PublicKey: PUBLIC_KEY,
           PaymentReference: paymentReference,
+          CallbackUrl: callbackUrl ?? 'https://cityhup.com/payment/callback',
         }),
       });
 
