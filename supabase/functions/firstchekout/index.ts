@@ -9,13 +9,12 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 
-const PUBLIC_KEY  = Deno.env.get('FIRSTCHEKOUT_PUBLIC_KEY')  ?? '';
-const SECRET_KEY  = Deno.env.get('FIRSTCHEKOUT_SECRET_KEY')  ?? '';
-const MERCHANT_ID = Deno.env.get('FIRSTCHEKOUT_MERCHANT_ID') ?? PUBLIC_KEY;
-
-// OAuth uses the same public/secret key pair as client credentials
-const CLIENT_ID     = PUBLIC_KEY;
-const CLIENT_SECRET = SECRET_KEY;
+const PUBLIC_KEY    = Deno.env.get('FIRSTCHEKOUT_PUBLIC_KEY')    ?? '';
+const SECRET_KEY    = Deno.env.get('FIRSTCHEKOUT_SECRET_KEY')    ?? '';
+const MERCHANT_ID   = Deno.env.get('FIRSTCHEKOUT_MERCHANT_ID')   ?? PUBLIC_KEY;
+// OAuth credentials — separate from API keys (found in merchant dashboard → Developer/OAuth settings)
+const CLIENT_ID     = Deno.env.get('FIRSTCHEKOUT_CLIENT_ID')     ?? PUBLIC_KEY;
+const CLIENT_SECRET = Deno.env.get('FIRSTCHEKOUT_CLIENT_SECRET') ?? SECRET_KEY;
 
 const IDENTITY_URL = 'https://www.firstchekout.com/identityserver';
 const API_URL      = 'https://www.firstchekout.com/apigateway';
