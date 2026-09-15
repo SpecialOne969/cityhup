@@ -37,20 +37,26 @@ async function getAccessToken(): Promise<string> {
     grant_type: 'client_credentials',
   });
 
+  console.log('[FC] Fetching token, CLIENT_ID prefix:', CLIENT_ID.slice(0, 10));
+
   const res = await fetch(`${IDENTITY_URL}/api/v2/Authenticate/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString(),
   });
 
+  const text = await res.text();
+  console.log('[FC] Token response status:', res.status, '| body:', text.slice(0, 300));
+
   if (!res.ok) {
-    const text = await res.text();
     throw new Error(`Token fetch failed (${res.status}): ${text}`);
   }
 
-  const data = await res.json();
+  let data: any;
+  try { data = JSON.parse(text); } catch { throw new Error(`Token response not JSON: ${text.slice(0, 200)}`); }
+
   if (!data.isSuccess || !data.value?.access_token) {
-    throw new Error(`Auth failed: ${data.error ?? JSON.stringify(data)}`);
+    throw new Error(`Auth failed: ${JSON.stringify(data).slice(0, 300)}`);
   }
 
   cachedToken  = data.value.access_token as string;
