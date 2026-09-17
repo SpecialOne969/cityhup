@@ -13,7 +13,7 @@ import { ClientType, PaymentMethod, MeansOfId } from '../../types';
 import ImageUploader from '../../components/ImageUploader';
 import { uploadImages, uploadImage } from '../../lib/uploadImage';
 import { supabase } from '../../lib/supabase';
-import { initiateFirstChekoutPayment, generatePaymentReference } from '../../lib/firstchekout';
+import { initiatePaystackPayment, generateReference } from '../../lib/paystack';
 
 const STEPS = ['Client Type', 'Location', 'Business Info', 'Extra Details', 'Payment & Submit'];
 
@@ -155,38 +155,48 @@ export default function RegisterScreen() {
   const [clientPassword, setClientPassword] = useState('');
   const [clientPasswordConfirm, setClientPasswordConfirm] = useState('');
 
-  // FirstChekOut payment
-  const [fcRef, setFcRef]         = useState(''); // paymentReference stored after redirect completes
-  const [fcLoading, setFcLoading] = useState(false);
-  const [fcError, setFcError]     = useState('');
+  // Paystack payment
+  const paystackPayRef = useRef(''); // holds reference immediately after onSuccess fires
+  const [paystackRef, setPaystackRef]         = useState('');
+  const [paystackLoading, setPaystackLoading] = useState(false);
+  const [paystackError, setPaystackError]     = useState('');
 
   const PROPERTY_CAT_IDS = ['house-building', 'property-agent', 'real-estate', 'rental'];
   const isPropertyClient = selectedCats.some(c => PROPERTY_CAT_IDS.includes(c));
 
-  async function handlePayWithFirstChekout() {
+  async function handlePayWithPaystack() {
     if (!email.trim()) {
-      setFcError('Please enter the client email address (Step 2) before paying.');
+      setPaystackError('Please enter the client email address (Step 2) before paying.');
       return;
     }
-    if (paymentBand === 0) { setFcError('Payment amount is ₦0 — nothing to pay.'); return; }
-    setFcError('');
-    setFcLoading(true);
-    const paymentRef = generatePaymentReference();
-    setFcRef(paymentRef);
+    if (paymentBand === 0) { setPaystackError('Payment amount is ₦0 — nothing to pay.'); return; }
+    setPaystackError('');
+    setPaystackLoading(true);
+    const ref = generateReference();
     try {
-      // Registration is submitted in handleSubmit after this returns.
-      // initiateFirstChekoutPayment will redirect the browser to FirstChekOut's
-      // hosted checkout page — the page will not return on web.
-      await initiateFirstChekoutPayment({
-        payerEmail: email.trim(),
-        payerName: businessName.trim() || 'Client',
+      await initiatePaystackPayment({
+        email: email.trim(),
         amountNGN: totalAmountNGN,
-        paymentReference: paymentRef,
+        reference: ref,
+        businessName: businessName.trim() || undefined,
+        onSuccess: (paidRef) => {
+          paystackPayRef.current = paidRef;
+          setPaystackRef(paidRef);
+          setPaystackLoading(false);
+          handleSubmit(); // submit immediately after payment confirmed
+        },
+        onCancel: () => {
+          setPaystackLoading(false);
+          if (!paystackPayRef.current) {
+            setPaystackError('Payment cancelled. Click the button to try again.');
+          }
+        },
       });
     } catch (e: any) {
-      setFcLoading(false);
-      setFcError(e.message ?? 'Could not open payment page. Try again.');
+      setPaystackLoading(false);
+      setPaystackError(e.message ?? 'Could not open payment page. Try again.');
     }
+    setPaystackLoading(false);
   }
 
   function addShelfItem() {
@@ -214,7 +224,7 @@ export default function RegisterScreen() {
   // Payment
   const [paymentBand, setPaymentBand] = useState(2000);
   const [duration, setDuration] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('firstchekout');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('paystack');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const totalAmountNGN = paymentBand * duration;
@@ -362,7 +372,7 @@ export default function RegisterScreen() {
         duration,
         paymentMethod,
         acceptedTerms,
-        referral: fcRef ? `FirstChekOut:${fcRef}` : (referral || undefined),
+        referral: paystackPayRef.current ? `Paystack:${paystackPayRef.current}` : (referral || undefined),
         registeredBy: agentCode,
         categories: selectedCats,
         shelfItems: [
@@ -811,7 +821,7 @@ export default function RegisterScreen() {
               <View style={styles.payNote}>
                 <Ionicons name="information-circle-outline" size={16} color={Colors.info} />
                 <Text style={styles.payNoteText}>
-                  For FirstChekOut, click "Pay with FirstChekOut" below — you will be redirected to complete payment. For bank transfer, upload proof of payment.
+                  For Paystack, click "Pay with Paystack" — a secure popup will open. After payment, registration is submitted automatically. For bank transfer, upload proof of payment.
                 </Text>
               </View>
 
@@ -844,23 +854,31 @@ export default function RegisterScreen() {
                 </View>
               )}
 
-              {/* FirstChekOut pay button */}
-              {paymentMethod === 'firstchekout' && (
+              {/* Paystack pay button */}
+              {paymentMethod === 'paystack' && (
                 <View style={styles.paystackSection}>
-                  <Text style={styles.fcNote}>
-                    Click below to pay securely via FirstChekOut (First Bank). You will be redirected to the payment page. Your registration will be submitted before the redirect.
-                  </Text>
-                  <TouchableOpacity
-                    style={[styles.paystackBtn, (fcLoading || paymentBand === 0) && { opacity: 0.6 }]}
-                    onPress={handlePayWithFirstChekout}
-                    disabled={fcLoading || paymentBand === 0}
-                  >
-                    <Ionicons name="card-outline" size={18} color={Colors.white} />
-                    <Text style={styles.paystackBtnText}>
-                      {fcLoading ? 'Redirecting to payment…' : `Pay ₦${totalAmountNGN.toLocaleString()} with FirstChekOut`}
-                    </Text>
-                  </TouchableOpacity>
-                  {fcError ? <Text style={styles.paystackError}>{fcError}</Text> : null}
+                  {paystackRef ? (
+                    <View style={styles.paystackSuccess}>
+                      <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.paystackSuccessText}>Payment confirmed!</Text>
+                        <Text style={styles.paystackRef}>Ref: {paystackRef}</Text>
+                        <Text style={[styles.paystackSuccessText, { fontSize: 12, fontWeight: '400', color: Colors.textMedium }]}>Submitting registration…</Text>
+                      </View>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.paystackBtn, (paystackLoading || paymentBand === 0) && { opacity: 0.6 }]}
+                      onPress={handlePayWithPaystack}
+                      disabled={paystackLoading || paymentBand === 0}
+                    >
+                      <Ionicons name="card-outline" size={18} color={Colors.white} />
+                      <Text style={styles.paystackBtnText}>
+                        {paystackLoading ? 'Opening payment…' : `Pay ₦${totalAmountNGN.toLocaleString()} with Paystack`}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  {paystackError ? <Text style={styles.paystackError}>{paystackError}</Text> : null}
                 </View>
               )}
 

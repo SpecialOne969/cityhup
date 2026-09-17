@@ -1,6 +1,6 @@
 export type ClientType = 'corporate' | 'individual';
 export type ClientStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
-export type PaymentMethod = 'interswitch' | 'remita' | 'paystack' | 'firstchekout';
+export type PaymentMethod = 'interswitch' | 'remita' | 'paystack' | 'bank_transfer';
 export type MeansOfId =
   | 'NIN'
   | 'DriversLicense'
