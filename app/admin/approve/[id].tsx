@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -191,6 +191,43 @@ export default function ApproveClientScreen() {
           <Row label="Referral / Guarantor"                value={client.referral || 'N/A'} />
           {client.identification && (
             <Row label="Means of Identification" value={`${client.identification.type}: ${client.identification.number}`} />
+          )}
+        </Section>
+
+        <Section title="Photos & Documents">
+          {client.pictures && client.pictures.length > 0 ? (
+            <View style={styles.imgBlock}>
+              <Text style={styles.imgBlockLabel}>Business Photos ({client.pictures.length})</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imgRow}>
+                {client.pictures.map((uri, i) => (
+                  <Image key={i} source={{ uri }} style={styles.thumbImg} resizeMode="cover" />
+                ))}
+              </ScrollView>
+            </View>
+          ) : (
+            <Row label="Business Photos" value="None uploaded" />
+          )}
+
+          {client.identification?.image ? (
+            <View style={styles.imgBlock}>
+              <Text style={styles.imgBlockLabel}>ID Document ({client.identification.type})</Text>
+              <Image source={{ uri: client.identification.image }} style={styles.docImg} resizeMode="contain" />
+            </View>
+          ) : (
+            <Row label="ID Document Image" value="Not uploaded" />
+          )}
+
+          {client.infoImages && client.infoImages.length > 0 ? (
+            <View style={styles.imgBlock}>
+              <Text style={styles.imgBlockLabel}>Info Images ({client.infoImages.length})</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imgRow}>
+                {client.infoImages.map((uri, i) => (
+                  <Image key={i} source={{ uri }} style={styles.thumbImg} resizeMode="cover" />
+                ))}
+              </ScrollView>
+            </View>
+          ) : (
+            <Row label="Info Images" value="None uploaded" />
           )}
         </Section>
 
@@ -494,4 +531,10 @@ const styles = StyleSheet.create({
 
   confirmBox: { backgroundColor: Colors.warningLight, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: Colors.warning, marginBottom: 8 },
   confirmMsg: { fontSize: 13, color: Colors.textDark, lineHeight: 18, marginBottom: 10 },
+
+  imgBlock:      { marginBottom: 12 },
+  imgBlockLabel: { fontSize: 12, fontWeight: '700', color: Colors.textMedium, marginBottom: 6 },
+  imgRow:        { gap: 8, paddingBottom: 4 },
+  thumbImg:      { width: 120, height: 90, borderRadius: 8, backgroundColor: Colors.borderLight },
+  docImg:        { width: '100%', height: 180, borderRadius: 8, backgroundColor: Colors.borderLight, marginBottom: 4 },
 });

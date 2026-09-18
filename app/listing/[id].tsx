@@ -23,6 +23,7 @@ export default function ListingDetailScreen() {
   const allCats = storeCategories.length > 0 ? storeCategories : CATEGORIES;
 
   const [showComplaint, setShowComplaint] = useState(false);
+  const [showPhotos, setShowPhotos] = useState(false);
   const [complainName, setComplainName] = useState('');
   const [complainPhone, setComplainPhone] = useState('');
   const [complainDesc, setComplainDesc] = useState('');
@@ -191,6 +192,12 @@ export default function ListingDetailScreen() {
               <Text style={styles.actionBtnText}>Website</Text>
             </TouchableOpacity>
           ) : null}
+          {client.pictures && client.pictures.length > 0 ? (
+            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#7C3AED' }]} onPress={() => setShowPhotos(true)}>
+              <Ionicons name="images" size={18} color={Colors.white} />
+              <Text style={styles.actionBtnText}>Photos</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         {/* Photo Gallery */}
@@ -339,6 +346,30 @@ export default function ListingDetailScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Photos Modal */}
+      <Modal visible={showPhotos} animationType="slide" transparent onRequestClose={() => setShowPhotos(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modal, { paddingBottom: 24 }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Photos ({client.pictures?.length ?? 0})</Text>
+              <TouchableOpacity onPress={() => setShowPhotos(false)}>
+                <Ionicons name="close" size={22} color={Colors.textMedium} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+              {client.pictures?.map((uri, i) => (
+                <Image
+                  key={i}
+                  source={{ uri }}
+                  style={{ width: '100%', height: 220, borderRadius: 12, backgroundColor: Colors.borderLight }}
+                  resizeMode="cover"
+                />
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Complaint Modal */}
       <Modal visible={showComplaint} animationType="slide" transparent>

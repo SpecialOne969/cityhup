@@ -282,6 +282,16 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Agent Portal CTA */}
+          <TouchableOpacity
+            style={styles.agentCta}
+            onPress={() => router.push('/agent/register' as any)}
+          >
+            <Ionicons name="people-outline" size={15} color={Colors.gold} />
+            <Text style={styles.agentCtaText}>Become a CityHup Agent — Register / Login</Text>
+            <Ionicons name="chevron-forward" size={14} color={Colors.gold} />
+          </TouchableOpacity>
+
           {/* Social Media */}
           <View style={styles.socialRow}>
             <TouchableOpacity style={styles.socialBtn} onPress={() => Linking.openURL('https://facebook.com')}>
@@ -487,9 +497,16 @@ const styles = StyleSheet.create({
   footerLogo: { fontSize: 24, fontWeight: '900', color: Colors.white, letterSpacing: 2 },
   footerTag: { color: 'rgba(255,255,255,0.6)', fontSize: 11, marginBottom: 12 },
   footerText: { color: 'rgba(255,255,255,0.5)', fontSize: 11, marginBottom: 4 },
-  footerLinks: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
+  footerLinks: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' },
   footerLink: { color: Colors.gold, fontSize: 12, fontWeight: '600' },
   footerDot: { color: 'rgba(255,255,255,0.4)', fontSize: 12 },
+  agentCta: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginTop: 14, backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
+    borderWidth: 1, borderColor: Colors.gold,
+  },
+  agentCtaText: { flex: 1, color: Colors.gold, fontSize: 12, fontWeight: '700' },
   socialRow: { flexDirection: 'row', gap: 10, marginTop: 16, justifyContent: 'center' },
   socialBtn: {
     width: 38, height: 38, borderRadius: 19,
