@@ -367,6 +367,7 @@ export default function RegisterScreen() {
         identification: meansOfId
           ? { type: meansOfId as MeansOfId, number: meansOfIdNum, image: uploadedIdImage }
           : undefined,
+        paymentProof: uploadedPaymentProof,
         pictures: uploadedPictures,
         paymentBand,
         duration,

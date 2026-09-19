@@ -58,6 +58,7 @@ export interface Client {
   director?: string;
   pictures: string[];
   identification?: IdentificationDoc;
+  paymentProof?: string;
 
   // Subscription / Payment
   paymentBand: number;

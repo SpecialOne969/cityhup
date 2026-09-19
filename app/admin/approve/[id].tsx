@@ -229,6 +229,16 @@ export default function ApproveClientScreen() {
           ) : (
             <Row label="Info Images" value="None uploaded" />
           )}
+
+          {/* Payment Proof */}
+          {client.paymentProof ? (
+            <View style={styles.imgBlock}>
+              <Text style={styles.imgBlockLabel}>Payment Proof</Text>
+              <Image source={{ uri: client.paymentProof }} style={styles.docImg} resizeMode="contain" />
+            </View>
+          ) : (
+            <Row label="Payment Proof" value="Not uploaded" />
+          )}
         </Section>
 
         <Section title="Categories">

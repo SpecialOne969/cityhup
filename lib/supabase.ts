@@ -44,6 +44,7 @@ export function dbToClient(row: any): Client {
     director: row.director ?? undefined,
     pictures: row.pictures ?? [],
     identification: row.identification ?? undefined,
+    paymentProof: row.payment_proof ?? undefined,
     paymentBand: row.payment_band ?? 0,
     duration: row.duration ?? 1,
     paymentMethod: row.payment_method ?? 'paystack',
@@ -95,6 +96,7 @@ export function clientToDb(client: Partial<Client>): Record<string, any> {
   if (client.director !== undefined) row.director = client.director;
   if (client.pictures !== undefined) row.pictures = client.pictures;
   if (client.identification !== undefined) row.identification = client.identification;
+  if (client.paymentProof !== undefined) row.payment_proof = client.paymentProof;
   if (client.paymentBand !== undefined) row.payment_band = client.paymentBand;
   if (client.duration !== undefined) row.duration = client.duration;
   if (client.paymentMethod !== undefined) row.payment_method = client.paymentMethod;
