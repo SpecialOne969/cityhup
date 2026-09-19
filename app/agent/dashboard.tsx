@@ -204,9 +204,18 @@ export default function AgentDashboard() {
             <View style={styles.infoCard}>
               <Ionicons name="information-circle-outline" size={18} color={Colors.info} />
               <Text style={styles.infoText}>
-                Your commission rate is <Text style={styles.infoBold}>{Math.round(currentAgent.commissionRate * 100)}%</Text> per registration fee. Commissions are paid out once your account is verified by admin.
+                Commission rate: <Text style={styles.infoBold}>{Math.round(currentAgent.commissionRate * 100)}%</Text> per registration fee (range: <Text style={styles.infoBold}>25% – 35%</Text> as per CHL Terms & Conditions). Commissions are paid on application once eligibility is met.
               </Text>
             </View>
+
+            {thisMonthLogs >= monthlyTarget && (
+              <View style={[styles.infoCard, { backgroundColor: Colors.successLight, borderColor: Colors.success }]}>
+                <Ionicons name="trophy" size={18} color={Colors.success} />
+                <Text style={[styles.infoText, { color: Colors.success }]}>
+                  You've exceeded your monthly target! A <Text style={styles.infoBold}>bonus</Text> will be applied to your account as per CHL Terms & Conditions.
+                </Text>
+              </View>
+            )}
           </>
         )}
 

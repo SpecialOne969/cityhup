@@ -184,6 +184,10 @@ export interface Agent {
   state: string;
   lga: string;
   city: string;
+  address?: string;
+  nearestLandmark?: string;
+  identification?: IdentificationDoc;
+  bankName?: string;
   accountName: string;
   accountNumber: string;
   referralCode: string;

@@ -63,7 +63,7 @@ interface AppState {
 
   // Agent portal
   currentAgent: Agent | null;
-  registerAgent: (data: { fullName: string; email: string; phone: string; state: string; lga: string; city: string; accountName: string; accountNumber: string; referredBy?: string; password: string }) => Promise<void>;
+  registerAgent: (data: { fullName: string; email: string; phone: string; state: string; lga: string; city: string; address?: string; nearestLandmark?: string; idType?: string; idNumber?: string; idImage?: string; bankName?: string; accountName: string; accountNumber: string; referredBy?: string; password: string }) => Promise<void>;
   agentLogin: (email: string, password: string) => Promise<'ok' | 'pending' | 'suspended' | 'not_found'>;
   agentLogout: () => Promise<void>;
   agentClientLogs: AgentClientLog[];
@@ -602,7 +602,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const agentCode = `AGT-${stateCode}-${Date.now().toString().slice(-6)}`;
     const id = `agt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const passwordHash = await hashPassword(data.password);
-    const row = {
+    const row: Record<string, any> = {
       id,
       agent_code: agentCode,
       full_name: sanitizeText(data.fullName),
@@ -618,9 +618,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       referred_by: data.referredBy?.trim() || null,
       status: 'pending',
       monthly_target: 50,
-      withdrawal_threshold: 20,
+      withdrawal_threshold: 5,
       commission_rate: 0.35,
     };
+    if (data.address) row.address = data.address.trim();
+    if (data.nearestLandmark) row.nearest_landmark = data.nearestLandmark.trim();
+    if (data.bankName) row.bank_name = data.bankName.trim();
+    if (data.idType && data.idNumber) {
+      row.identification = { type: data.idType, number: data.idNumber, image: data.idImage };
+    }
     const { error } = await supabase.from('agents').insert(row);
     if (error) throw new Error(error.message ?? 'Registration failed');
   },

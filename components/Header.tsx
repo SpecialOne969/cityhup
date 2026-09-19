@@ -72,6 +72,10 @@ export default function Header() {
               <Text style={styles.registerBtnText}>List Business</Text>
             </TouchableOpacity>
           )}
+          <TouchableOpacity style={styles.agentBtn} onPress={() => router.push('/agent/login' as any)}>
+            <Ionicons name="people-outline" size={16} color={Colors.gold} />
+            <Text style={styles.agentBtnText}>Agent</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -180,6 +184,12 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.gold,
   },
   myBusinessText: { color: Colors.gold, fontSize: 12, fontWeight: '700', maxWidth: 90 },
+  agentBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    borderWidth: 1, borderColor: Colors.gold,
+    borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6,
+  },
+  agentBtnText: { color: Colors.gold, fontSize: 12, fontWeight: '700' },
   navBar: { backgroundColor: Colors.primaryDark },
   navScroll: { paddingHorizontal: 12 },
   navItem: { paddingHorizontal: 14, paddingVertical: 10 },
