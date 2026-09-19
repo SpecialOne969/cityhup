@@ -26,7 +26,7 @@ function FieldRow({ label, children, required }: { label: string; children: Reac
   );
 }
 
-function Input({ value, onChangeText, placeholder, keyboardType, multiline, numberOfLines, style }: any) {
+function Input({ value, onChangeText, placeholder, keyboardType, multiline, numberOfLines, style, secureTextEntry }: any) {
   return (
     <TextInput
       style={[styles.input, multiline && { height: (numberOfLines ?? 3) * 22, textAlignVertical: 'top' }, style]}
@@ -37,6 +37,8 @@ function Input({ value, onChangeText, placeholder, keyboardType, multiline, numb
       keyboardType={keyboardType}
       multiline={multiline}
       numberOfLines={numberOfLines}
+      secureTextEntry={secureTextEntry}
+      autoCapitalize={secureTextEntry ? 'none' : undefined}
     />
   );
 }
@@ -154,6 +156,7 @@ export default function RegisterScreen() {
   // Client portal login setup (optional)
   const [clientPassword, setClientPassword] = useState('');
   const [clientPasswordConfirm, setClientPasswordConfirm] = useState('');
+  const [showClientPw, setShowClientPw] = useState(false);
 
   // Paystack payment
   const paystackPayRef = useRef(''); // holds reference immediately after onSuccess fires
@@ -906,11 +909,33 @@ export default function RegisterScreen() {
                 </Text>
               </View>
               <FieldRow label="Client Portal Password">
-                <Input value={clientPassword} onChangeText={setClientPassword} placeholder="Leave blank to skip" />
+                <View style={styles.pwWrap}>
+                  <Input
+                    value={clientPassword}
+                    onChangeText={setClientPassword}
+                    placeholder="Leave blank to skip"
+                    secureTextEntry={!showClientPw}
+                    style={{ flex: 1, borderWidth: 0 }}
+                  />
+                  <TouchableOpacity style={styles.pwEye} onPress={() => setShowClientPw(v => !v)}>
+                    <Ionicons name={showClientPw ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textLight} />
+                  </TouchableOpacity>
+                </View>
               </FieldRow>
               {clientPassword ? (
                 <FieldRow label="Confirm Password">
-                  <Input value={clientPasswordConfirm} onChangeText={setClientPasswordConfirm} placeholder="Repeat password" />
+                  <View style={styles.pwWrap}>
+                    <Input
+                      value={clientPasswordConfirm}
+                      onChangeText={setClientPasswordConfirm}
+                      placeholder="Repeat password"
+                      secureTextEntry={!showClientPw}
+                      style={{ flex: 1, borderWidth: 0 }}
+                    />
+                    <TouchableOpacity style={styles.pwEye} onPress={() => setShowClientPw(v => !v)}>
+                      <Ionicons name={showClientPw ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textLight} />
+                    </TouchableOpacity>
+                  </View>
                 </FieldRow>
               ) : null}
 
@@ -1013,6 +1038,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 11, fontSize: 14, color: Colors.textDark,
     backgroundColor: Colors.bgLight,
   },
+  pwWrap: {
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1, borderColor: Colors.border, borderRadius: 9,
+    backgroundColor: Colors.bgLight,
+  },
+  pwEye: { paddingHorizontal: 12 },
   picker: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     borderWidth: 1, borderColor: Colors.border, borderRadius: 9,
