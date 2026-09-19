@@ -41,6 +41,10 @@ export default function ClientDashboard() {
   const [pictures, setPictures] = useState<string[]>(currentClient?.pictures ?? []);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
 
+  // Photo-only edit mode (independent of profile edit mode)
+  const [photoEditMode, setPhotoEditMode] = useState(false);
+  const [photoSaving, setPhotoSaving] = useState(false);
+
   // Shelf item editing
   const [shelfItems, setShelfItems] = useState(currentClient?.shelfItems ?? []);
   const [newItemName, setNewItemName] = useState('');
@@ -97,6 +101,30 @@ export default function ClientDashboard() {
       setSaveMsg({ type: 'error', text: e.message ?? 'Could not save changes. Try again.' });
     } finally {
       setSaving(false);
+      setUploadingPhotos(false);
+    }
+  }
+
+  async function handleSavePhotos() {
+    setPhotoSaving(true);
+    try {
+      let uploadedPictures = pictures;
+      const newPics = pictures.filter(p => !p.startsWith('http'));
+      if (newPics.length > 0) {
+        setUploadingPhotos(true);
+        const uploaded = await uploadImages(newPics, 'client-pictures', `client-${currentClient!.id}`);
+        uploadedPictures = [...pictures.filter(p => p.startsWith('http')), ...uploaded];
+        setPictures(uploadedPictures);
+        setUploadingPhotos(false);
+      }
+      await updateClientProfile(currentClient!.id, { pictures: uploadedPictures });
+      setPhotoEditMode(false);
+      setSaveMsg({ type: 'success', text: 'Photos updated successfully.' });
+      setTimeout(() => setSaveMsg(null), 3000);
+    } catch (e: any) {
+      setSaveMsg({ type: 'error', text: e.message ?? 'Could not save photos. Try again.' });
+    } finally {
+      setPhotoSaving(false);
       setUploadingPhotos(false);
     }
   }
@@ -224,15 +252,54 @@ export default function ClientDashboard() {
 
         {/* Photos */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Business Photos</Text>
-          {editMode ? (
-            <ImageUploader
-              images={pictures}
-              onChange={setPictures}
-              maxImages={5}
-              uploading={uploadingPhotos}
-              note="Add or remove business photos."
-            />
+          <View style={styles.photoSectionHeader}>
+            <Text style={styles.sectionTitle}>Business Photos</Text>
+            {!photoEditMode && !editMode && (
+              <TouchableOpacity
+                style={styles.photoEditBtn}
+                onPress={() => setPhotoEditMode(true)}
+              >
+                <Ionicons name="camera-outline" size={15} color={Colors.primary} />
+                <Text style={styles.photoEditBtnText}>
+                  {pictures.length > 0 ? 'Edit Photos' : 'Add Photos'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {(photoEditMode || editMode) ? (
+            <>
+              <ImageUploader
+                images={pictures}
+                onChange={setPictures}
+                maxImages={5}
+                uploading={uploadingPhotos}
+                note="Add or remove business photos (max 5)."
+              />
+              {photoEditMode && !editMode && (
+                <View style={styles.photoActions}>
+                  <TouchableOpacity
+                    style={styles.photoCancelBtn}
+                    onPress={() => {
+                      setPictures(currentClient?.pictures ?? []);
+                      setPhotoEditMode(false);
+                    }}
+                  >
+                    <Text style={styles.photoCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.photoSaveBtn, photoSaving && { opacity: 0.6 }]}
+                    onPress={handleSavePhotos}
+                    disabled={photoSaving}
+                  >
+                    <Ionicons name="cloud-upload-outline" size={15} color={Colors.white} />
+                    <Text style={styles.photoSaveText}>
+                      {photoSaving ? (uploadingPhotos ? 'Uploading…' : 'Saving…') : 'Save Photos'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>
           ) : (
             pictures.length > 0 ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
@@ -241,7 +308,11 @@ export default function ClientDashboard() {
                 ))}
               </ScrollView>
             ) : (
-              <Text style={styles.emptyNote}>No photos yet. Tap Edit to add some.</Text>
+              <TouchableOpacity style={styles.addPhotosPrompt} onPress={() => setPhotoEditMode(true)}>
+                <Ionicons name="camera-outline" size={28} color={Colors.primary} />
+                <Text style={styles.addPhotosPromptText}>Tap to add business photos</Text>
+                <Text style={styles.addPhotosPromptSub}>Showcase your work — up to 5 photos</Text>
+              </TouchableOpacity>
             )
           )}
         </View>
@@ -405,6 +476,32 @@ const styles = StyleSheet.create({
   },
 
   photo: { width: 130, height: 100, borderRadius: 10, backgroundColor: Colors.borderLight },
+
+  photoSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  photoEditBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    borderWidth: 1, borderColor: Colors.primary, borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 5,
+  },
+  photoEditBtnText: { color: Colors.primary, fontSize: 12, fontWeight: '700' },
+  photoActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  photoCancelBtn: {
+    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  photoCancelText: { color: Colors.textMedium, fontSize: 13, fontWeight: '600' },
+  photoSaveBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, backgroundColor: Colors.primary, borderRadius: 8, paddingVertical: 10,
+  },
+  photoSaveText: { color: Colors.white, fontWeight: '700', fontSize: 13 },
+  addPhotosPrompt: {
+    alignItems: 'center', paddingVertical: 24, gap: 6,
+    borderWidth: 1.5, borderColor: Colors.primary, borderStyle: 'dashed',
+    borderRadius: 12, backgroundColor: Colors.primaryLight,
+  },
+  addPhotosPromptText: { fontSize: 14, color: Colors.primary, fontWeight: '700' },
+  addPhotosPromptSub: { fontSize: 12, color: Colors.textLight },
 
   shelfAddRow: { flexDirection: 'row', gap: 6, marginBottom: 10 },
   shelfInput: {
