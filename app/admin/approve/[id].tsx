@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Image,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Image, Linking,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -195,47 +195,44 @@ export default function ApproveClientScreen() {
         </Section>
 
         <Section title="Photos & Documents">
-          {client.pictures && client.pictures.length > 0 ? (
-            <View style={styles.imgBlock}>
-              <Text style={styles.imgBlockLabel}>Business Photos ({client.pictures.length})</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imgRow}>
-                {client.pictures.map((uri, i) => (
-                  <Image key={i} source={{ uri }} style={styles.thumbImg} resizeMode="cover" />
-                ))}
-              </ScrollView>
-            </View>
-          ) : (
-            <Row label="Business Photos" value="None uploaded" />
-          )}
+          <Text style={styles.docNote}>
+            Tap any image to open full size. If an image doesn't load, tap the link button to open it in your browser.
+          </Text>
 
+          {/* Business Photos */}
+          <DocGroup
+            label="Business Photos"
+            uris={client.pictures ?? []}
+            emptyText="No business photos uploaded"
+          />
+
+          {/* ID Document */}
           {client.identification?.image ? (
-            <View style={styles.imgBlock}>
-              <Text style={styles.imgBlockLabel}>ID Document ({client.identification.type})</Text>
-              <Image source={{ uri: client.identification.image }} style={styles.docImg} resizeMode="contain" />
-            </View>
+            <DocGroup
+              label={`ID Document — ${client.identification.type} · ${client.identification.number}`}
+              uris={[client.identification.image]}
+            />
           ) : (
-            <Row label="ID Document Image" value="Not uploaded" />
+            <Row label="ID Document Image" value={
+              client.identification
+                ? `${client.identification.type}: ${client.identification.number} — no image uploaded`
+                : 'Not provided'
+            } />
           )}
 
-          {client.infoImages && client.infoImages.length > 0 ? (
-            <View style={styles.imgBlock}>
-              <Text style={styles.imgBlockLabel}>Info Images ({client.infoImages.length})</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imgRow}>
-                {client.infoImages.map((uri, i) => (
-                  <Image key={i} source={{ uri }} style={styles.thumbImg} resizeMode="cover" />
-                ))}
-              </ScrollView>
-            </View>
-          ) : (
-            <Row label="Info Images" value="None uploaded" />
-          )}
+          {/* Info / Supporting Docs */}
+          <DocGroup
+            label="Supporting / Info Images"
+            uris={client.infoImages ?? []}
+            emptyText="No supporting documents uploaded"
+          />
 
           {/* Payment Proof */}
           {client.paymentProof ? (
-            <View style={styles.imgBlock}>
-              <Text style={styles.imgBlockLabel}>Payment Proof</Text>
-              <Image source={{ uri: client.paymentProof }} style={styles.docImg} resizeMode="contain" />
-            </View>
+            <DocGroup
+              label="Payment Proof"
+              uris={[client.paymentProof]}
+            />
           ) : (
             <Row label="Payment Proof" value="Not uploaded" />
           )}
@@ -455,6 +452,41 @@ export default function ApproveClientScreen() {
   );
 }
 
+function DocGroup({ label, uris, emptyText }: { label: string; uris: string[]; emptyText?: string }) {
+  const [errors, setErrors] = useState<Record<number, boolean>>({});
+  if (uris.length === 0 && emptyText) {
+    return <Row label={label} value={emptyText} />;
+  }
+  return (
+    <View style={styles.imgBlock}>
+      <Text style={styles.imgBlockLabel}>{label} ({uris.length})</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imgRow}>
+        {uris.map((uri, i) => (
+          <TouchableOpacity key={i} style={styles.docThumbWrap} onPress={() => Linking.openURL(uri)}>
+            {errors[i] ? (
+              <View style={[styles.thumbImg, styles.imgError]}>
+                <Ionicons name="image-outline" size={22} color={Colors.textMuted} />
+                <Text style={styles.imgErrorText}>Can't load</Text>
+              </View>
+            ) : (
+              <Image
+                source={{ uri }}
+                style={styles.thumbImg}
+                resizeMode="cover"
+                onError={() => setErrors(e => ({ ...e, [i]: true }))}
+              />
+            )}
+            <TouchableOpacity style={styles.openLinkBtn} onPress={() => Linking.openURL(uri)}>
+              <Ionicons name="open-outline" size={13} color={Colors.white} />
+              <Text style={styles.openLinkText}>Open</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View style={styles.section}>
@@ -542,9 +574,19 @@ const styles = StyleSheet.create({
   confirmBox: { backgroundColor: Colors.warningLight, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: Colors.warning, marginBottom: 8 },
   confirmMsg: { fontSize: 13, color: Colors.textDark, lineHeight: 18, marginBottom: 10 },
 
-  imgBlock:      { marginBottom: 12 },
+  docNote: { fontSize: 11, color: Colors.textLight, fontStyle: 'italic', marginBottom: 10, lineHeight: 16 },
+  imgBlock:      { marginBottom: 14 },
   imgBlockLabel: { fontSize: 12, fontWeight: '700', color: Colors.textMedium, marginBottom: 6 },
-  imgRow:        { gap: 8, paddingBottom: 4 },
-  thumbImg:      { width: 120, height: 90, borderRadius: 8, backgroundColor: Colors.borderLight },
-  docImg:        { width: '100%', height: 180, borderRadius: 8, backgroundColor: Colors.borderLight, marginBottom: 4 },
+  imgRow:        { gap: 10, paddingBottom: 4 },
+  docThumbWrap:  { position: 'relative' },
+  thumbImg:      { width: 140, height: 105, borderRadius: 8, backgroundColor: Colors.borderLight },
+  imgError:      { alignItems: 'center', justifyContent: 'center', gap: 4, borderWidth: 1, borderColor: Colors.border },
+  imgErrorText:  { fontSize: 10, color: Colors.textMuted },
+  openLinkBtn: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.55)', borderBottomLeftRadius: 8, borderBottomRightRadius: 8,
+    paddingVertical: 4,
+  },
+  openLinkText: { fontSize: 11, color: Colors.white, fontWeight: '600' },
 });
