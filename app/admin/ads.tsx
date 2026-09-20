@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Switch, Image,
 } from 'react-native';
@@ -33,6 +33,8 @@ export default function AdsScreen() {
   const toggleAd     = useAppStore(s => s.toggleAd);
   const deleteAd     = useAppStore(s => s.deleteAd);
 
+  const clients = useAppStore(s => s.clients);
+
   const [formMode, setFormMode]       = useState<FormMode>('create');
   const [editingId, setEditingId]     = useState<string | null>(null);
   const [showForm, setShowForm]       = useState(false);
@@ -50,15 +52,34 @@ export default function AdsScreen() {
   const [linkType, setLinkType]       = useState<'external' | 'client' | 'category'>('external');
   const [linkUrl, setLinkUrl]         = useState('');
   const [linkClientId, setLinkClientId] = useState('');
+  const [clientSearch, setClientSearch] = useState('');
+  const [selectedClientName, setSelectedClientName] = useState('');
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
   const [targetState, setTargetState] = useState('');
   const [priority, setPriority]       = useState('0');
   const [isActive, setIsActive]       = useState(true);
+
+  const approvedClients = useMemo(
+    () => clients.filter(c => c.status === 'approved'),
+    [clients],
+  );
+
+  const filteredClients = useMemo(() => {
+    if (!clientSearch.trim()) return approvedClients.slice(0, 8);
+    const q = clientSearch.toLowerCase();
+    return approvedClients.filter(c =>
+      c.businessName.toLowerCase().includes(q) ||
+      c.clientCode?.toLowerCase().includes(q) ||
+      c.id.toLowerCase().includes(q),
+    ).slice(0, 8);
+  }, [clientSearch, approvedClients]);
 
   if (!currentAdmin) { router.replace('/admin/login'); return null; }
 
   function resetForm() {
     setTitle(''); setSubtitle(''); setBgColor(Colors.primary); setIcon('megaphone');
     setAdImage([]); setLinkType('external'); setLinkUrl(''); setLinkClientId('');
+    setClientSearch(''); setSelectedClientName(''); setShowClientDropdown(false);
     setTargetState(''); setPriority('0'); setIsActive(true);
     setFormError(''); setEditingId(null);
   }
@@ -80,6 +101,10 @@ export default function AdsScreen() {
     setLinkType(ad.linkType);
     setLinkUrl(ad.linkUrl ?? '');
     setLinkClientId(ad.linkClientId ?? '');
+    const linked = ad.linkClientId ? clients.find(c => c.id === ad.linkClientId) : null;
+    setSelectedClientName(linked ? linked.businessName : '');
+    setClientSearch('');
+    setShowClientDropdown(false);
     setTargetState(ad.targetState ?? '');
     setPriority(String(ad.priority ?? 0));
     setIsActive(ad.isActive);
@@ -233,9 +258,51 @@ export default function AdsScreen() {
             </FieldRow>
 
             {linkType === 'client' ? (
-              <FieldRow label="Client ID">
-                <TextInput style={styles.input} value={linkClientId} onChangeText={setLinkClientId}
-                  placeholder="Paste client ID" placeholderTextColor={Colors.textMuted} />
+              <FieldRow label="Link to Client">
+                {selectedClientName ? (
+                  <View style={styles.selectedClient}>
+                    <Ionicons name="storefront-outline" size={15} color={Colors.primary} />
+                    <Text style={styles.selectedClientName} numberOfLines={1}>{selectedClientName}</Text>
+                    <TouchableOpacity onPress={() => { setSelectedClientName(''); setLinkClientId(''); setClientSearch(''); }}>
+                      <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View>
+                    <TextInput
+                      style={styles.input}
+                      value={clientSearch}
+                      onChangeText={v => { setClientSearch(v); setShowClientDropdown(true); }}
+                      onFocus={() => setShowClientDropdown(true)}
+                      placeholder="Search by business name or code…"
+                      placeholderTextColor={Colors.textMuted}
+                    />
+                    {showClientDropdown && filteredClients.length > 0 && (
+                      <View style={styles.clientDropdown}>
+                        {filteredClients.map(c => (
+                          <TouchableOpacity
+                            key={c.id}
+                            style={styles.clientDropdownItem}
+                            onPress={() => {
+                              setLinkClientId(c.id);
+                              setSelectedClientName(c.businessName);
+                              setClientSearch('');
+                              setShowClientDropdown(false);
+                            }}
+                          >
+                            <Text style={styles.clientDropdownName} numberOfLines={1}>{c.businessName}</Text>
+                            <Text style={styles.clientDropdownCode}>{c.clientCode ?? c.id.slice(0, 10)}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                    {showClientDropdown && clientSearch.trim() && filteredClients.length === 0 && (
+                      <View style={styles.clientDropdown}>
+                        <Text style={styles.clientDropdownEmpty}>No approved clients found</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
               </FieldRow>
             ) : (
               <FieldRow label={linkType === 'category' ? 'Category ID' : 'URL'}>
@@ -511,6 +578,26 @@ const styles = StyleSheet.create({
   adTitle: { fontSize: 13, fontWeight: '700', color: Colors.textDark, marginBottom: 2 },
   adMeta: { fontSize: 11, color: Colors.textLight },
   iconAction: { padding: 6 },
+
+  selectedClient: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.primaryLight ?? '#e8f5e9', borderRadius: 9,
+    padding: 10, borderWidth: 1, borderColor: Colors.primary + '40',
+  },
+  selectedClientName: { flex: 1, fontSize: 14, color: Colors.primary, fontWeight: '600' },
+  clientDropdown: {
+    backgroundColor: Colors.bgCard, borderRadius: 9,
+    borderWidth: 1, borderColor: Colors.border,
+    marginTop: 2, overflow: 'hidden', zIndex: 99,
+  },
+  clientDropdownItem: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 12, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
+  },
+  clientDropdownName: { flex: 1, fontSize: 13, color: Colors.textDark, fontWeight: '600' },
+  clientDropdownCode: { fontSize: 11, color: Colors.textMuted, marginLeft: 8 },
+  clientDropdownEmpty: { padding: 12, fontSize: 13, color: Colors.textMuted, textAlign: 'center' },
 
   deleteConfirmRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
