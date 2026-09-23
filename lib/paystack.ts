@@ -2,7 +2,7 @@ import { Platform, Linking } from 'react-native';
 import { supabase } from './supabase';
 
 export const PAYSTACK_PUBLIC_KEY =
-  process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY ?? 'pk_test_4e8467558df1d69469a67ebaaf9e2dcefa01d257';
+  process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY ?? 'pk_live_39b4ab00e7cfd7feaa04d3b177738cda8aa597fa';
 
 // ─── Reference generator ───────────────────────────────────────────────────
 export function generateReference(): string {
