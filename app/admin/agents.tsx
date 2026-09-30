@@ -177,13 +177,38 @@ function AgentCard({ agent, loading, onApprove, onSuspend }: {
 
       {expanded && (
         <View style={styles.agentDetails}>
+          <SectionLabel label="Personal" />
           <Row label="Email" value={agent.email} />
           <Row label="Phone" value={agent.phone} />
+          <Row label="State" value={agent.state || '—'} />
           <Row label="LGA" value={agent.lga || '—'} />
           <Row label="City" value={agent.city || '—'} />
+          {(agent as any).address ? <Row label="Address" value={(agent as any).address} /> : null}
+          {(agent as any).nearestLandmark ? <Row label="Nearest Landmark" value={(agent as any).nearestLandmark} /> : null}
+          <Row label="Referred By" value={agent.referredBy || '—'} />
+
+          <SectionLabel label="Identification" />
+          {(agent as any).identification ? (
+            <>
+              <Row label="ID Type" value={(agent as any).identification.type || '—'} />
+              <Row label="ID Number" value={(agent as any).identification.number || '—'} />
+              {(agent as any).identification.image ? (
+                <View style={styles.idImageRow}>
+                  <Text style={styles.detailLabel}>ID Document</Text>
+                  <TouchableOpacity onPress={() => require('react-native').Linking.openURL((agent as any).identification.image)}>
+                    <Text style={styles.idImageLink}>View Image ↗</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+            </>
+          ) : <Row label="ID" value="Not provided" />}
+
+          <SectionLabel label="Bank Details" />
+          {(agent as any).bankName ? <Row label="Bank Name" value={(agent as any).bankName} /> : null}
           <Row label="Account Name" value={agent.accountName || '—'} />
           <Row label="Account Number" value={agent.accountNumber || '—'} />
-          <Row label="Referred By" value={agent.referredBy || '—'} />
+
+          <SectionLabel label="Commission" />
           <Row label="Commission Rate" value={`${Math.round(agent.commissionRate * 100)}%`} />
           <Row label="Monthly Target" value={String(agent.monthlyTarget)} />
           <Row label="Withdrawal Threshold" value={String(agent.withdrawalThreshold)} />
@@ -222,6 +247,10 @@ function Row({ label, value }: { label: string; value: string }) {
       <Text style={styles.detailValue}>{value}</Text>
     </View>
   );
+}
+
+function SectionLabel({ label }: { label: string }) {
+  return <Text style={styles.sectionLabel}>{label}</Text>;
 }
 
 function SummaryChip({ label, count, color }: { label: string; count: number; color: string }) {
@@ -303,6 +332,16 @@ const styles = StyleSheet.create({
   },
   detailLabel: { fontSize: 12, color: Colors.textLight },
   detailValue: { fontSize: 12, color: Colors.textDark, fontWeight: '600', maxWidth: '60%', textAlign: 'right' },
+  sectionLabel: {
+    fontSize: 11, fontWeight: '800', color: Colors.primary,
+    textTransform: 'uppercase', letterSpacing: 0.8,
+    marginTop: 12, marginBottom: 4,
+  },
+  idImageRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
+  },
+  idImageLink: { fontSize: 12, color: Colors.primary, fontWeight: '700' },
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
   approveBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',

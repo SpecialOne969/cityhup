@@ -355,10 +355,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   suspendClient: async (id, adminCode, reason) => {
-    await supabase
+    const { error } = await supabase
       .from('clients')
       .update({ status: 'suspended', approved_by: adminCode, suspended_reason: reason })
       .eq('id', id);
+    if (error) throw new Error(error.message ?? 'Failed to suspend client');
     set(state => ({
       clients: state.clients.map(c =>
         c.id === id ? { ...c, status: 'suspended', approvedBy: adminCode, suspendedReason: reason } : c
@@ -367,10 +368,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   unsuspendClient: async (id, adminCode) => {
-    await supabase
+    const { error } = await supabase
       .from('clients')
       .update({ status: 'approved', suspended_reason: null, approved_by: adminCode })
       .eq('id', id);
+    if (error) throw new Error(error.message ?? 'Failed to reinstate client');
     set(state => ({
       clients: state.clients.map(c =>
         c.id === id ? { ...c, status: 'approved', suspendedReason: undefined, approvedBy: adminCode } : c

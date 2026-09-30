@@ -787,12 +787,12 @@ export default function RegisterScreen() {
             <>
               <Text style={styles.stepNote}>Subscription & Payment</Text>
 
-              <FieldRow label="Payment Band (Annual / Monthly)">
+              <FieldRow label="Select Amount / Payment Plan">
                 <SelectPicker
                   options={PAYMENT_BANDS.map(p => ({ label: p.label, value: String(p.value) }))}
                   value={String(paymentBand)}
                   onChange={v => setPaymentBand(Number(v))}
-                  placeholder="Select payment band"
+                  placeholder="Select amount (₦1,000 – ₦10,000)"
                 />
               </FieldRow>
 

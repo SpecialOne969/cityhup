@@ -53,6 +53,12 @@ export default function AdBanner() {
     }
   }
 
+  function goTo(idx: number) {
+    const next = (idx + displayAds.length) % displayAds.length;
+    setActiveIndex(next);
+    scrollRef.current?.scrollTo({ x: next * BANNER_W, animated: true });
+  }
+
   return (
     <View style={styles.wrapper}>
       <View style={styles.traffic}>
@@ -61,43 +67,66 @@ export default function AdBanner() {
         <Text style={styles.trafficCount}>{trafficCount.toLocaleString()}</Text>
       </View>
 
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        scrollEventThrottle={16}
-        onMomentumScrollEnd={e => {
-          const idx = Math.round(e.nativeEvent.contentOffset.x / BANNER_W);
-          setActiveIndex(idx);
-        }}
-        style={styles.carousel}
-      >
-        {displayAds.map(ad => (
-          <TouchableOpacity
-            key={ad.id}
-            style={[styles.adCard, { width: BANNER_W, backgroundColor: ad.bgColor }]}
-            activeOpacity={0.9}
-            onPress={() => handleAdPress(ad)}
-          >
-            {(ad as any).imageUrl ? (
-              <Image
-                source={{ uri: (ad as any).imageUrl }}
-                style={styles.adBgImage}
-                resizeMode="cover"
-              />
-            ) : null}
-            <View style={styles.adContent}>
-              <Ionicons name={ad.icon as any} size={32} color="rgba(255,255,255,0.5)" />
-              <View style={styles.adText}>
-                <Text style={styles.adTitle}>{ad.title}</Text>
-                {ad.subtitle ? <Text style={styles.adSub}>{ad.subtitle}</Text> : null}
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
-            </View>
+      <View style={styles.carouselRow}>
+        {displayAds.length > 1 && (
+          <TouchableOpacity style={styles.navBtn} onPress={() => goTo(activeIndex - 1)}>
+            <Ionicons name="chevron-back" size={20} color={Colors.primary} />
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+        )}
+
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onMomentumScrollEnd={e => {
+            const idx = Math.round(e.nativeEvent.contentOffset.x / BANNER_W);
+            setActiveIndex(idx);
+          }}
+          style={{ flex: 1 }}
+        >
+          {displayAds.map(ad => {
+            const hasImage = !!(ad as any).imageUrl;
+            const bgColor = hasImage ? Colors.white : ad.bgColor;
+            const iconColor = hasImage ? ad.bgColor : 'rgba(255,255,255,0.5)';
+            const titleColor = hasImage ? Colors.textDark : Colors.white;
+            const subColor = hasImage ? Colors.textMedium : 'rgba(255,255,255,0.85)';
+            return (
+              <TouchableOpacity
+                key={ad.id}
+                style={[styles.adCard, { width: BANNER_W, backgroundColor: bgColor }]}
+                activeOpacity={0.9}
+                onPress={() => handleAdPress(ad)}
+              >
+                {hasImage ? (
+                  <Image
+                    source={{ uri: (ad as any).imageUrl }}
+                    style={styles.adBgImage}
+                    resizeMode="contain"
+                  />
+                ) : null}
+                {!hasImage && (
+                  <View style={styles.adContent}>
+                    <Ionicons name={ad.icon as any} size={32} color={iconColor} />
+                    <View style={styles.adText}>
+                      <Text style={[styles.adTitle, { color: titleColor }]}>{ad.title}</Text>
+                      {ad.subtitle ? <Text style={[styles.adSub, { color: subColor }]}>{ad.subtitle}</Text> : null}
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {displayAds.length > 1 && (
+          <TouchableOpacity style={styles.navBtn} onPress={() => goTo(activeIndex + 1)}>
+            <Ionicons name="chevron-forward" size={20} color={Colors.primary} />
+          </TouchableOpacity>
+        )}
+      </View>
 
       <View style={styles.dots}>
         {displayAds.map((_, i) => (
@@ -116,21 +145,26 @@ const styles = StyleSheet.create({
   },
   trafficText: { fontSize: 11, color: Colors.textLight },
   trafficCount: { fontSize: 11, color: Colors.primary, fontWeight: '700' },
-  carousel: {},
+  carouselRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 },
+  navBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
   adCard: {
-    marginHorizontal: 16, borderRadius: 12, minHeight: 80, overflow: 'hidden',
+    marginHorizontal: 8, borderRadius: 12, minHeight: 90, overflow: 'hidden',
+    borderWidth: 1, borderColor: Colors.borderLight,
   },
   adBgImage: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.45,
+    width: '100%', height: 120,
   },
   adContent: {
     flexDirection: 'row', alignItems: 'center',
     padding: 16, gap: 12,
   },
   adText: { flex: 1 },
-  adTitle: { color: Colors.white, fontSize: 14, fontWeight: '700', marginBottom: 3 },
-  adSub: { color: 'rgba(255,255,255,0.85)', fontSize: 12 },
+  adTitle: { fontSize: 14, fontWeight: '700', marginBottom: 3 },
+  adSub: { fontSize: 12 },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 8 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.border },
   dotActive: { backgroundColor: Colors.primary, width: 18 },

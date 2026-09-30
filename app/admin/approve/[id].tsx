@@ -77,19 +77,29 @@ export default function ApproveClientScreen() {
   async function doSuspend() {
     if (!suspendReason.trim()) { setError('Provide a suspension reason.'); return; }
     setLoading(true);
-    await suspendClient(client!.id, currentAdmin!.adminCode, suspendReason);
-    setLoading(false);
-    setSuccess('Client has been suspended.');
-    setTimeout(() => router.back(), 1600);
+    try {
+      await suspendClient(client!.id, currentAdmin!.adminCode, suspendReason);
+      setSuccess('Client has been suspended.');
+      setTimeout(() => router.back(), 1600);
+    } catch (e: any) {
+      setError(e.message ?? 'Failed to suspend client. Check RLS policies.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function doUnsuspend() {
     if (!validateCode()) return;
     setLoading(true);
-    await unsuspendClient(client!.id, currentAdmin!.adminCode);
-    setLoading(false);
-    setSuccess('Client reinstated and visible again.');
-    setTimeout(() => router.back(), 1600);
+    try {
+      await unsuspendClient(client!.id, currentAdmin!.adminCode);
+      setSuccess('Client reinstated and visible again.');
+      setTimeout(() => router.back(), 1600);
+    } catch (e: any) {
+      setError(e.message ?? 'Failed to reinstate client.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function togglePremium() {
