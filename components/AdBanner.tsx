@@ -18,8 +18,6 @@ const FALLBACK_ADS = [
 
 export default function AdBanner() {
   const router = useRouter();
-  const trafficCount = useAppStore(s => s.trafficCount);
-  const incrementTraffic = useAppStore.getState().incrementTraffic;
   const ads = useAppStore(s => s.ads);
   const storeAds = ads.filter(a => a.isActive);
   const scrollRef = useRef<ScrollView>(null);
@@ -28,10 +26,6 @@ export default function AdBanner() {
   const displayAds = storeAds.length > 0
     ? storeAds.map(a => ({ id: a.id, title: a.title, subtitle: a.subtitle ?? '', bgColor: a.bgColor, icon: a.icon, imageUrl: a.imageUrl, linkType: a.linkType, linkUrl: a.linkUrl, linkClientId: a.linkClientId }))
     : FALLBACK_ADS;
-
-  useEffect(() => {
-    incrementTraffic();
-  }, []);
 
   useEffect(() => {
     if (displayAds.length <= 1) return;
@@ -61,12 +55,6 @@ export default function AdBanner() {
 
   return (
     <View style={styles.wrapper}>
-      <View style={styles.traffic}>
-        <Ionicons name="eye-outline" size={14} color={Colors.textLight} />
-        <Text style={styles.trafficText}>Site visits: </Text>
-        <Text style={styles.trafficCount}>{trafficCount.toLocaleString()}</Text>
-      </View>
-
       <View style={styles.carouselRow}>
         {displayAds.length > 1 && (
           <TouchableOpacity style={styles.navBtn} onPress={() => goTo(activeIndex - 1)}>
@@ -139,12 +127,6 @@ export default function AdBanner() {
 
 const styles = StyleSheet.create({
   wrapper: { marginVertical: 12 },
-  traffic: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end',
-    paddingHorizontal: 16, marginBottom: 8, gap: 3,
-  },
-  trafficText: { fontSize: 11, color: Colors.textLight },
-  trafficCount: { fontSize: 11, color: Colors.primary, fontWeight: '700' },
   carouselRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 },
   navBtn: {
     width: 32, height: 32, borderRadius: 16,
