@@ -264,6 +264,12 @@ export default function HomeScreen() {
           <Text style={styles.footerTag}>Your Neighborhood Directory</Text>
           <Text style={styles.footerText}>© 2026 City Hup Ltd. All rights reserved.</Text>
           <Text style={styles.footerText}>Lagos, Lagos State, Nigeria</Text>
+          <TouchableOpacity onPress={() => Linking.openURL('tel:08122358247')}>
+            <Text style={styles.footerContact}>📞 08122358247</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => Linking.openURL('mailto:cityhup@gmail.com')}>
+            <Text style={styles.footerContact}>✉ cityhup@gmail.com</Text>
+          </TouchableOpacity>
           <View style={styles.footerLinks}>
             <TouchableOpacity onPress={() => router.push('/admin/login')}>
               <Text style={styles.footerLink}>Admin Portal</Text>
@@ -303,7 +309,7 @@ export default function HomeScreen() {
             <TouchableOpacity style={styles.socialBtn} onPress={() => Linking.openURL('https://instagram.com')}>
               <Ionicons name="logo-instagram" size={20} color={Colors.white} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.socialBtn} onPress={() => Linking.openURL('https://wa.me/2348000000000')}>
+            <TouchableOpacity style={styles.socialBtn} onPress={() => Linking.openURL('https://wa.link/73xktg')}>
               <Ionicons name="logo-whatsapp" size={20} color={Colors.white} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.socialBtn} onPress={() => Linking.openURL('https://youtube.com')}>
@@ -497,6 +503,7 @@ const styles = StyleSheet.create({
   footerLogo: { fontSize: 24, fontWeight: '900', color: Colors.white, letterSpacing: 2 },
   footerTag: { color: 'rgba(255,255,255,0.6)', fontSize: 11, marginBottom: 12 },
   footerText: { color: 'rgba(255,255,255,0.5)', fontSize: 11, marginBottom: 4 },
+  footerContact: { color: 'rgba(255,255,255,0.75)', fontSize: 12, marginBottom: 4, fontWeight: '600' },
   footerLinks: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' },
   footerLink: { color: Colors.gold, fontSize: 12, fontWeight: '600' },
   footerDot: { color: 'rgba(255,255,255,0.4)', fontSize: 12 },

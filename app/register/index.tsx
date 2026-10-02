@@ -172,7 +172,8 @@ export default function RegisterScreen() {
       setPaystackError('Please enter the client email address (Step 2) before paying.');
       return;
     }
-    if (paymentBand === 0) { setPaystackError('Payment amount is ₦0 — nothing to pay.'); return; }
+    if (paymentBand < 1000) { setPaystackError('Minimum payment amount is ₦1,000.'); return; }
+    if (duration < 3) { setPaystackError('Minimum subscription is 3 months.'); return; }
     setPaystackError('');
     setPaystackLoading(true);
     const ref = generateReference();
@@ -225,8 +226,8 @@ export default function RegisterScreen() {
   }
 
   // Payment
-  const [paymentBand, setPaymentBand] = useState(2000);
-  const [duration, setDuration] = useState(1);
+  const [paymentBand, setPaymentBand] = useState(1000);
+  const [duration, setDuration] = useState(3);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('paystack');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
@@ -290,6 +291,14 @@ export default function RegisterScreen() {
       }
     }
     if (step === 4) {
+      if (paymentBand < 1000) {
+        setStepError('Minimum payment amount is ₦1,000. Please select a valid amount.');
+        return false;
+      }
+      if (duration < 3) {
+        setStepError('Minimum subscription is 3 months. Please select at least 3 months.');
+        return false;
+      }
       if (!acceptedTerms) {
         setStepError('You must accept the Terms & Conditions before submitting.');
         return false;
@@ -796,12 +805,12 @@ export default function RegisterScreen() {
                 />
               </FieldRow>
 
-              <FieldRow label="Duration">
+              <FieldRow label="Duration (minimum 3 months)">
                 <SelectPicker
-                  options={DURATIONS.map(d => ({ label: d.label, value: String(d.value) }))}
+                  options={DURATIONS.filter(d => d.value >= 3).map(d => ({ label: d.label, value: String(d.value) }))}
                   value={String(duration)}
                   onChange={v => setDuration(Number(v))}
-                  placeholder="Select duration"
+                  placeholder="Select duration (min. 3 months)"
                 />
               </FieldRow>
 
@@ -872,9 +881,9 @@ export default function RegisterScreen() {
                     </View>
                   ) : (
                     <TouchableOpacity
-                      style={[styles.paystackBtn, (paystackLoading || paymentBand === 0) && { opacity: 0.6 }]}
+                      style={[styles.paystackBtn, (paystackLoading || paymentBand < 1000 || duration < 3) && { opacity: 0.6 }]}
                       onPress={handlePayWithPaystack}
-                      disabled={paystackLoading || paymentBand === 0}
+                      disabled={paystackLoading || paymentBand < 1000 || duration < 3}
                     >
                       <Ionicons name="card-outline" size={18} color={Colors.white} />
                       <Text style={styles.paystackBtnText}>
