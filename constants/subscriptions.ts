@@ -28,23 +28,6 @@ export const MEANS_OF_ID = [
 ] as const;
 
 export const NATURE_OF_BIZ_OPTIONS = [
-  'Artisan / Skilled Trade',
-  'Automobile',
-  'Beauty & Wellness',
-  'Building & Construction',
-  'Catering & Food',
-  'Education',
-  'Entertainment & Events',
-  'Fashion & Clothing',
-  'Finance & Banking',
-  'General Merchandise',
-  'Health & Medical',
-  'Hospitality (Hotel/Lodge)',
-  'Industrial / Manufacturing',
-  'IT & Technology',
-  'Logistics & Transportation',
-  'Property & Real Estate',
-  'Retail (Supermarket/Store)',
-  'Travels & Tourism',
-  'Other',
+  'Service Provider',
+  'Goods and Services',
 ];
