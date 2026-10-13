@@ -67,10 +67,16 @@ export default function Header() {
               <Text style={styles.myBusinessText} numberOfLines={1}>My Business</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.registerBtn} onPress={() => router.push('/register')}>
-              <Ionicons name="business-outline" size={16} color={Colors.accent} />
-              <Text style={styles.registerBtnText}>List Business</Text>
-            </TouchableOpacity>
+            <View style={styles.bizActions}>
+              <TouchableOpacity style={styles.registerBtn} onPress={() => router.push('/register')}>
+                <Ionicons name="business-outline" size={16} color={Colors.accent} />
+                <Text style={styles.registerBtnText}>List Business</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.vendorLoginBtn} onPress={() => router.push('/client-login' as any)}>
+                <Ionicons name="log-in-outline" size={15} color={Colors.white} />
+                <Text style={styles.vendorLoginText}>Vendor Login</Text>
+              </TouchableOpacity>
+            </View>
           )}
           <TouchableOpacity style={styles.agentBtn} onPress={() => router.push('/agent/login' as any)}>
             <Ionicons name="people-outline" size={16} color={Colors.gold} />
@@ -158,7 +164,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  topActions: { flexDirection: 'row', gap: 6 },
+  topActions: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  bizActions: { flexDirection: 'column', gap: 4, alignItems: 'flex-end' },
+  vendorLoginBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)',
+    borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4,
+  },
+  vendorLoginText: { color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: '600' },
   signInBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)',

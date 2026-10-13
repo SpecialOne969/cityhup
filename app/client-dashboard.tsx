@@ -244,20 +244,10 @@ export default function ClientDashboard() {
         </View>
 
         {/* Photos */}
-        <View style={styles.section}>
+        <View style={styles.photoSection}>
           <View style={styles.photoSectionHeader}>
             <Text style={styles.sectionTitle}>Business Photos</Text>
-            {!photoEditMode && !editMode && (
-              <TouchableOpacity
-                style={styles.photoEditBtn}
-                onPress={() => setPhotoEditMode(true)}
-              >
-                <Ionicons name="camera-outline" size={15} color={Colors.primary} />
-                <Text style={styles.photoEditBtnText}>
-                  {pictures.length > 0 ? 'Edit Photos' : 'Add Photos'}
-                </Text>
-              </TouchableOpacity>
-            )}
+            <Text style={styles.photoCount}>{pictures.length}/5 photos</Text>
           </View>
 
           {(photoEditMode || editMode) ? (
@@ -267,7 +257,7 @@ export default function ClientDashboard() {
                 onChange={setPictures}
                 maxImages={5}
                 uploading={uploadingPhotos}
-                note="Add or remove business photos (max 5)."
+                note="Add or remove business photos (max 5). Tap + to add, tap × to remove."
               />
               {photoEditMode && !editMode && (
                 <View style={styles.photoActions}>
@@ -294,19 +284,29 @@ export default function ClientDashboard() {
               )}
             </>
           ) : (
-            pictures.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                {pictures.map((uri, i) => (
-                  <Image key={i} source={{ uri }} style={styles.photo} resizeMode="cover" />
-                ))}
-              </ScrollView>
-            ) : (
-              <TouchableOpacity style={styles.addPhotosPrompt} onPress={() => setPhotoEditMode(true)}>
-                <Ionicons name="camera-outline" size={28} color={Colors.primary} />
-                <Text style={styles.addPhotosPromptText}>Tap to add business photos</Text>
-                <Text style={styles.addPhotosPromptSub}>Showcase your work — up to 5 photos</Text>
-              </TouchableOpacity>
-            )
+            <>
+              {pictures.length > 0 ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
+                  {pictures.map((uri, i) => (
+                    <Image key={i} source={{ uri }} style={styles.photo} resizeMode="cover" />
+                  ))}
+                </ScrollView>
+              ) : null}
+
+              {/* Always-visible manage button */}
+              {!editMode && (
+                <TouchableOpacity
+                  style={styles.managePhotosBtn}
+                  onPress={() => setPhotoEditMode(true)}
+                >
+                  <Ionicons name="camera" size={20} color={Colors.white} />
+                  <Text style={styles.managePhotosBtnText}>
+                    {pictures.length > 0 ? 'Add / Edit Photos' : 'Upload Business Photos'}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.7)" />
+                </TouchableOpacity>
+              )}
+            </>
           )}
         </View>
 
@@ -470,13 +470,18 @@ const styles = StyleSheet.create({
 
   photo: { width: 130, height: 100, borderRadius: 10, backgroundColor: Colors.borderLight },
 
-  photoSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  photoEditBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    borderWidth: 1, borderColor: Colors.primary, borderRadius: 8,
-    paddingHorizontal: 10, paddingVertical: 5,
+  photoSection: {
+    backgroundColor: Colors.bgCard, margin: 12, marginBottom: 0,
+    borderRadius: 12, padding: 14, borderWidth: 1, borderColor: Colors.borderLight,
   },
-  photoEditBtnText: { color: Colors.primary, fontSize: 12, fontWeight: '700' },
+  photoSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  photoCount: { fontSize: 12, color: Colors.textLight, fontWeight: '600' },
+  managePhotosBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.primary, borderRadius: 10,
+    paddingVertical: 14, paddingHorizontal: 16, marginTop: 12,
+  },
+  managePhotosBtnText: { flex: 1, color: Colors.white, fontWeight: '700', fontSize: 15 },
   photoActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
   photoCancelBtn: {
     paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8,
@@ -488,13 +493,6 @@ const styles = StyleSheet.create({
     gap: 6, backgroundColor: Colors.primary, borderRadius: 8, paddingVertical: 10,
   },
   photoSaveText: { color: Colors.white, fontWeight: '700', fontSize: 13 },
-  addPhotosPrompt: {
-    alignItems: 'center', paddingVertical: 24, gap: 6,
-    borderWidth: 1.5, borderColor: Colors.primary, borderStyle: 'dashed',
-    borderRadius: 12, backgroundColor: Colors.primaryLight,
-  },
-  addPhotosPromptText: { fontSize: 14, color: Colors.primary, fontWeight: '700' },
-  addPhotosPromptSub: { fontSize: 12, color: Colors.textLight },
 
   shelfAddRow: { flexDirection: 'row', gap: 6, marginBottom: 10 },
   shelfInput: {
