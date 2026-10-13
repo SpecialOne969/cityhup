@@ -194,12 +194,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { error } = await supabase.auth.signUp({ email, password });
     if (error) return 'error';
     // Sign in immediately (email confirm disabled in Supabase dashboard)
-    const { data: authData } = await supabase.auth.signInWithPassword({ email, password });
-    if (authData.user) {
-      const { data: row } = await supabase
-        .from('clients').select('*').eq('email', email).maybeSingle();
-      if (row) set({ currentClient: dbToClient(row) });
-    }
+    const { data: authData, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInErr || !authData.user) return 'error';
+    const { data: row } = await supabase
+      .from('clients').select('*').eq('email', email).maybeSingle();
+    if (!row) return 'error';
+    set({ currentClient: dbToClient(row) });
     return 'ok';
   },
 

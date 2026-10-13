@@ -58,7 +58,7 @@ export default function Header() {
           ) : (
             <TouchableOpacity style={styles.signInBtn} onPress={() => router.push('/customer-login')}>
               <Ionicons name="person-outline" size={16} color={Colors.white} />
-              <Text style={styles.signInText}>Sign In</Text>
+              <Text style={styles.signInText}>Customer Login</Text>
             </TouchableOpacity>
           )}
           {currentClient ? (
