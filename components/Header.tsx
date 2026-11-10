@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, TextInput, Platform,
-  ScrollView,
+  View, Text, StyleSheet, TouchableOpacity, TextInput, Platform, ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { useAppStore } from '../store/useAppStore';
+import { CUSTOMER_AUTH_DISABLED } from '../constants/config';
 
 export default function Header() {
   const router = useRouter();
@@ -56,7 +56,10 @@ export default function Header() {
               </Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.signInBtn} onPress={() => router.push('/customer-login')}>
+            <TouchableOpacity
+              style={[styles.signInBtn, CUSTOMER_AUTH_DISABLED && { opacity: 0.45, ...Platform.select({ web: { cursor: 'not-allowed' } as any }) }]}
+              onPress={CUSTOMER_AUTH_DISABLED ? undefined : () => router.push('/customer-login')}
+            >
               <Ionicons name="person-outline" size={16} color={Colors.white} />
               <Text style={styles.signInText}>Customer Login</Text>
             </TouchableOpacity>

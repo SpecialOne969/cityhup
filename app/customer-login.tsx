@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { useAppStore } from '../store/useAppStore';
+import { CUSTOMER_AUTH_DISABLED } from '../constants/config';
 
 type Mode = 'login' | 'forgot';
 
@@ -70,7 +71,10 @@ export default function CustomerLoginScreen() {
         {/* Tab row — only in login mode */}
         {mode === 'login' && (
           <View style={styles.tabRow}>
-            <TouchableOpacity style={styles.tabBtn} onPress={() => router.replace('/customer-register')}>
+            <TouchableOpacity
+              style={[styles.tabBtn, CUSTOMER_AUTH_DISABLED && { opacity: 0.45, ...Platform.select({ web: { cursor: 'not-allowed' } as any }) }]}
+              onPress={CUSTOMER_AUTH_DISABLED ? undefined : () => router.replace('/customer-register')}
+            >
               <Text style={styles.tabText}>Create Account</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.tabBtn, styles.tabBtnActive]}>
@@ -116,8 +120,9 @@ export default function CustomerLoginScreen() {
             ) : null}
 
             <TouchableOpacity
-              style={[styles.loginBtn, loading && { opacity: 0.6 }]}
-              onPress={handleLogin} disabled={loading}
+              style={[styles.loginBtn, (loading || CUSTOMER_AUTH_DISABLED) && { opacity: 0.45 }, CUSTOMER_AUTH_DISABLED && Platform.select({ web: { cursor: 'not-allowed' } as any })]}
+              onPress={CUSTOMER_AUTH_DISABLED ? undefined : handleLogin}
+              disabled={loading}
             >
               <Ionicons name="log-in" size={18} color={Colors.white} />
               <Text style={styles.loginBtnText}>{loading ? 'Signing in…' : 'Sign In'}</Text>

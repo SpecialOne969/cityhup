@@ -5,6 +5,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
+import { CUSTOMER_AUTH_DISABLED } from '../constants/config';
 import { STATES, getLgasByState } from '../constants/locations';
 import { CATEGORIES } from '../constants/categories';
 import { useAppStore } from '../store/useAppStore';
@@ -139,8 +140,8 @@ export default function CustomerRegisterScreen() {
             <Text style={[styles.tabText, tab === 'register' && styles.tabTextActive]}>Create Account</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.tabBtn, tab === 'login' && styles.tabBtnActive]}
-            onPress={() => router.replace('/customer-login')}
+            style={[styles.tabBtn, tab === 'login' && styles.tabBtnActive, CUSTOMER_AUTH_DISABLED && { opacity: 0.45, ...Platform.select({ web: { cursor: 'not-allowed' } as any }) }]}
+            onPress={CUSTOMER_AUTH_DISABLED ? undefined : () => router.replace('/customer-login')}
           >
             <Text style={[styles.tabText, tab === 'login' && styles.tabTextActive]}>Sign In</Text>
           </TouchableOpacity>
@@ -260,8 +261,8 @@ export default function CustomerRegisterScreen() {
           ) : null}
 
           <TouchableOpacity
-            style={[styles.submitBtn, submitting && { opacity: 0.6 }]}
-            onPress={handleRegister}
+            style={[styles.submitBtn, (submitting || CUSTOMER_AUTH_DISABLED) && { opacity: 0.45 }, CUSTOMER_AUTH_DISABLED && Platform.select({ web: { cursor: 'not-allowed' } as any })]}
+            onPress={CUSTOMER_AUTH_DISABLED ? undefined : handleRegister}
             disabled={submitting}
           >
             <Ionicons name="person-add" size={18} color={Colors.white} />
