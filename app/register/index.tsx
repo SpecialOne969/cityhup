@@ -83,6 +83,7 @@ function SelectPicker({ options, value, onChange, placeholder }: {
 export default function RegisterScreen() {
   const router = useRouter();
   const addClient = useAppStore(s => s.addClient);
+  const setupClientLogin = useAppStore(s => s.setupClientLogin);
   const storeCategories = useAppStore(s => s.categories);
   const categoriesLoaded = useAppStore(s => s.categoriesLoaded);
   const loadCategories = useAppStore(s => s.loadCategories);
@@ -411,14 +412,20 @@ export default function RegisterScreen() {
         priceUnit: propertyListings[0]?.unit || undefined,
       });
 
-      // Set up client portal login if password was provided
+      // Set up client portal login and redirect to dashboard
       if (clientPassword && email) {
+        setSubmitStatus('Setting up your portal login…');
         try {
-          await supabase.auth.signUp({ email, password: clientPassword });
-        } catch { /* non-fatal */ }
+          const result = await setupClientLogin(email.trim().toLowerCase(), clientPassword);
+          if (result === 'ok') {
+            setSubmitStatus('Registration complete! Taking you to your dashboard…');
+            setTimeout(() => router.replace('/client-dashboard' as any), 1500);
+            return;
+          }
+        } catch { /* fall through */ }
       }
       setSubmitStatus('Submitted! Awaiting admin approval…');
-      setTimeout(() => router.replace('/'), 2500);
+      setTimeout(() => router.replace('/client-login' as any), 2500);
     } catch (err: any) {
       setStepError(err?.message ?? 'Could not submit. Check your internet connection and try again.');
     } finally {
