@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { useAppStore } from '../store/useAppStore';
-import { CUSTOMER_AUTH_DISABLED } from '../constants/config';
+import { CUSTOMER_AUTH_DISABLED, VENDOR_AUTH_DISABLED } from '../constants/config';
 
 export default function Header() {
   const router = useRouter();
@@ -75,7 +75,10 @@ export default function Header() {
                 <Ionicons name="business-outline" size={16} color={Colors.accent} />
                 <Text style={styles.registerBtnText}>List Business</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.vendorLoginBtn} onPress={() => router.push('/client-login' as any)}>
+              <TouchableOpacity
+                style={[styles.vendorLoginBtn, VENDOR_AUTH_DISABLED && { opacity: 0.45, ...Platform.select({ web: { cursor: 'not-allowed' } as any }) }]}
+                onPress={VENDOR_AUTH_DISABLED ? undefined : () => router.push('/client-login' as any)}
+              >
                 <Ionicons name="log-in-outline" size={15} color={Colors.white} />
                 <Text style={styles.vendorLoginText}>Vendor Login</Text>
               </TouchableOpacity>

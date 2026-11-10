@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { useAppStore } from '../store/useAppStore';
+import { VENDOR_AUTH_DISABLED } from '../constants/config';
 import { supabase } from '../lib/supabase';
 
 type Mode = 'login' | 'setup' | 'forgot';
@@ -232,8 +233,8 @@ export default function ClientLoginScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.submitBtn, loading && { opacity: 0.6 }]}
-              onPress={handleLogin}
+              style={[styles.submitBtn, (loading || VENDOR_AUTH_DISABLED) && { opacity: 0.45 }, VENDOR_AUTH_DISABLED && Platform.select({ web: { cursor: 'not-allowed' } as any })]}
+              onPress={VENDOR_AUTH_DISABLED ? undefined : handleLogin}
               disabled={loading}
             >
               <Ionicons name="log-in-outline" size={18} color={Colors.white} />
@@ -301,8 +302,8 @@ export default function ClientLoginScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.submitBtn, loading && { opacity: 0.6 }]}
-              onPress={handleSetup}
+              style={[styles.submitBtn, (loading || VENDOR_AUTH_DISABLED) && { opacity: 0.45 }, VENDOR_AUTH_DISABLED && Platform.select({ web: { cursor: 'not-allowed' } as any })]}
+              onPress={VENDOR_AUTH_DISABLED ? undefined : handleSetup}
               disabled={loading}
             >
               <Ionicons name="person-add-outline" size={18} color={Colors.white} />
